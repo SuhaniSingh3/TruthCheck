@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Report - TruthCheck</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Base Reset & Background */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-attachment: fixed;
+            color: white;
+            padding: 40px 20px;
+            transition: background 0.5s ease;
+        }
+
+        /* Themes */
+        body.theme-cosmic { background: linear-gradient(135deg, #2e1a47 0%, #663399 50%, #4b0082 100%); }
+        body.theme-ocean { background: linear-gradient(135deg, #020024 0%, #090979 50%, #00d4ff 100%); }
+        body.theme-sunset { background: linear-gradient(135deg, #cc2b5e 0%, #753a88 100%); }
+        body.theme-forest { background: linear-gradient(135deg, #134e5e 0%, #71b280 100%); }
+        body.theme-midnight { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+
+        body::before {
+            content: "";
+            position: absolute; /* Kept absolute but removed fixed bounds so it scrolls if needed, or better make it fixed */
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(white 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.1;
+            z-index: -1;
+            position: fixed;
+        }
+
+        /* Navigation Bar */
+        nav {
+            position: fixed; /* Fixed at top */
+            top: 0; left: 0;
+            width: 100%;
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            background: rgba(46, 26, 71, 0.8);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo { font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; color: white; }
+        .logo-icon { background: white; color: #4b0082; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 900px;
+            margin-top: 80px; /* Space for nav */
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 50px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        h1 { font-size: 36px; letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; text-align: center; }
+        .subtitle { text-align: center; opacity: 0.8; margin-bottom: 40px; }
+
+        /* Report Sections */
+        .verdict-box {
+            text-align: center;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: 1px;
+        }
+        
+        .result-fake { background: rgba(255, 50, 50, 0.2); border: 2px solid rgba(255, 50, 50, 0.5); color: #ffb3b3; text-shadow: 0 0 10px rgba(255,50,50,0.5); }
+        .result-real { background: rgba(50, 255, 50, 0.2); border: 2px solid rgba(50, 255, 50, 0.5); color: #b3ffb3; text-shadow: 0 0 10px rgba(50,255,50,0.5); }
+        
+        .confidence { font-size: 18px; font-weight: 300; display: block; margin-top: 10px; opacity: 0.9; text-shadow: none; }
+
+        .section-title { font-size: 22px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
+        
+        .reasons-list { list-style-type: none; margin-bottom: 30px; }
+        .reasons-list li {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-left: 4px solid #00d4ff;
+        }
+
+        .article-preview {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            line-height: 1.6;
+            opacity: 0.8;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: pre-wrap;
+        }
+
+        .btn-back {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            text-decoration: none;
+            margin-top: 40px;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+        .btn-back:hover { background: rgba(255, 255, 255, 0.3); }
+
+        #error-msg { display: none; color: #ffb3b3; text-align: center; font-size: 20px; }
+        
+        /* Theme Switcher */
+        .theme-switcher {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px);
+            padding: 10px 15px; border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex; align-items: center; gap: 10px; z-index: 1000;
+        }
+        .theme-switcher select {
+            background: rgba(255, 255, 255, 0.1); color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3); padding: 5px 10px;
+            border-radius: 10px; outline: none; cursor: pointer;
+        }
+        .theme-switcher select option { background: #2e1a47; color: white; }
+        
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="/" class="logo">
+            <div class="logo-icon">✓</div> TruthCheck
+        </a>
+    </nav>
+
+    <div class="container">
+        
+        <div id="error-msg">
+            <h2>Error Localizing Data</h2>
+            <p>Could not find analysis data. Please go back and resubmit the article.</p>
+            <a href="/" class="btn-back">← Go Back</a>
+        </div>
+
+        <div class="glass-card" id="report-card" style="display: none;">
+            <h1>Analysis Report</h1>
+            <p class="subtitle">Detailed breakdown of linguistic patterns and authenticity</p>
+
+            <div id="verdict-box" class="verdict-box">
+                <span id="verdict-label">LOADING...</span>
+                <span class="confidence" id="verdict-confidence">Confidence: --%</span>
+            </div>
+
+            <div class="section-title">Why did we reach this conclusion?</div>
+            <ul class="reasons-list" id="reasons-list">
+                <!-- Reasons injected via JS -->
+            </ul>
+
+            <div class="section-title">Submitted Text Snippet</div>
+            <div class="article-preview" id="article-preview">
+                <!-- Text injected via JS -->
+            </div>
+
+            <div style="text-align: center;">
+                <a href="/" class="btn-back">← Analyze Another Article</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="theme-switcher">
+        <span>🎨 Theme:</span>
+        <select id="theme-select">
+            <option value="theme-cosmic">Cosmic Purple</option>
+            <option value="theme-ocean">Deep Ocean</option>
+            <option value="theme-sunset">Twilight Sunset</option>
+            <option value="theme-forest">Mystic Forest</option>
+            <option value="theme-midnight">Midnight Dark</option>
+        </select>
+    </div>
+
+    <script>
+        // Theme Logic
+        const themeSelect = document.getElementById("theme-select");
+        const savedTheme = localStorage.getItem("app-theme") || "theme-cosmic";
+        document.body.className = savedTheme;
+        if (themeSelect) {
+            themeSelect.value = savedTheme;
+            themeSelect.addEventListener("change", (e) => {
+                const newTheme = e.target.value;
+                document.body.className = newTheme;
+                localStorage.setItem("app-theme", newTheme);
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            const dataStr = sessionStorage.getItem("analysisResult");
+            if (!dataStr) {
+                document.getElementById("error-msg").style.display = "block";
+                return;
+            }
+
+            try {
+                const data = JSON.parse(dataStr);
+                
+                // Show Card
+                document.getElementById("report-card").style.display = "block";
+                document.getElementById("error-msg").style.display = "none";
+
+                // Setup Verdict
+                const verdictBox = document.getElementById("verdict-box");
+                const verdictLabel = document.getElementById("verdict-label");
+                const verdictConf = document.getElementById("verdict-confidence");
+
+                verdictLabel.textContent = data.label;
+                verdictConf.textContent = data.confidence ? `Model Accuracy Confidence: ${data.confidence}%` : "";
+
+                if (data.label && data.label.includes("FAKE")) {
+                    verdictBox.classList.add("result-fake");
+                } else {
+                    verdictBox.classList.add("result-real");
+                }
+
+                // Setup Reasons
+                const reasonsList = document.getElementById("reasons-list");
+                if (data.reasons && data.reasons.length > 0) {
+                    data.reasons.forEach(r => {
+                        const li = document.createElement("li");
+                        li.innerHTML = `<span>🧠</span> ${r}`;
+                        reasonsList.appendChild(li);
+                    });
+                } else {
+                    reasonsList.innerHTML = "<li><span>🧠</span> Based on statistical text probability patterns. No specific semantic reasons were flagged.</li>";
+                }
+
+                // Setup Text
+                document.getElementById("article-preview").textContent = data.text;
+                
+            } catch (e) {
+                document.getElementById("error-msg").style.display = "block";
+                console.error("Error parsing analysis result", e);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+═══════════════════════════════════════════════════════════════════════
+    FAKE NEWS DETECTION - SETUP INSTRUCTIONS FOR WINDOWS
+═══════════════════════════════════════════════════════════════════════
+
+⚠️  IMPORTANT: Python is not properly installed on your system
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: INSTALL PYTHON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Option A: From Python.org (Recommended)
+────────────────────────────────────────
+1. Go to https://www.python.org/downloads/
+2. Download "Python 3.10" or newer
+3. Run the installer
+4. ⚠️  IMPORTANT: Check "Add Python to PATH" during installation
+5. Restart your terminal/VS Code
+6. Verify with: python --version
+
+
+Option B: From Microsoft Store
+──────────────────────────────
+1. Open Microsoft Store
+2. Search for "Python 3.11" or "Python 3.12"
+3. Click Install
+4. Verify with: python --version
+
+
+Option C: Using Chocolatey (if you have it installed)
+───────────────────────────────────────────────────
+choco install python
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 2: VERIFY PYTHON INSTALLATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After installation, open a NEW terminal and run:
+
+    python --version
+
+You should see: Python 3.x.x (where x is at least 7)
+
+Also verify pip is working:
+
+    python -m pip --version
+
+You should see: pip X.X.X from C:\ ...
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 3: RUN THE PROJECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Open terminal in the fake-news-detection folder and run:
+
+    # Install dependencies (first time only)
+    python -m pip install -r requirements.txt
+
+    # Train the model
+    python train.py
+
+    # Start the API server (in terminal 1)
+    python app.py
+
+    # Test the API (in terminal 2, while server is running)
+    python test_api.py
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ "python is not recognized"
+   → Close ALL terminal windows and reopen VS Code
+   → Verify Python is in PATH:
+     Settings > Apps > Advanced app settings
+     Look for Python shortcuts
+
+❌ "pip is not recognized"
+   → Use: python -m pip instead of just pip
+
+❌ Module import errors
+   → Reinstall: python -m pip install --upgrade pip
+   → Then: python -m pip install -r requirements.txt
+
+❌ "Microsoft Store" message
+   → Uninstall the app alias in Settings > Apps > Advanced
+   → Install Python from python.org instead
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROJECT LOCATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  c:\Users\ASUS\Desktop\fake-news-detection\
+
+FILES:
+  • train.py              - Training script
+  • app.py                - Flask API server
+  • test_api.py           - API tests
+  • requirements.txt      - Dependencies
+  • README.md             - Full documentation
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+QUICK START AFTER PYTHON IS INSTALLED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+cd c:\Users\ASUS\Desktop\fake-news-detection
+python -m pip install -r requirements.txt
+python train.py
+
+
+═══════════════════════════════════════════════════════════════════════

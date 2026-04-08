@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TruthCheck - Fake News Detection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Base Reset & Background */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-attachment: fixed;
+            overflow: hidden;
+            color: white;
+            transition: background 0.5s ease;
+        }
+
+        /* Themes */
+        body.theme-cosmic { background: linear-gradient(135deg, #2e1a47 0%, #663399 50%, #4b0082 100%); }
+        body.theme-ocean { background: linear-gradient(135deg, #020024 0%, #090979 50%, #00d4ff 100%); }
+        body.theme-sunset { background: linear-gradient(135deg, #cc2b5e 0%, #753a88 100%); }
+        body.theme-forest { background: linear-gradient(135deg, #134e5e 0%, #71b280 100%); }
+        body.theme-midnight { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); }
+
+        /* Subtle Cosmic Sparkle Effect */
+        body::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: radial-gradient(white 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.1;
+            z-index: 0;
+        }
+
+        /* Navigation Bar */
+        nav {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            padding: 20px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            background: white;
+            color: #4b0082;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            transition: 0.3s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: white;
+            border-bottom: 2px solid white;
+            padding-bottom: 5px;
+        }
+
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 5px;
+            border-radius: 25px;
+            backdrop-filter: blur(5px);
+        }
+
+        .btn-login, .btn-signup {
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-login { background: rgba(255, 255, 255, 0.2); color: white; }
+        .btn-signup { background: transparent; color: white; }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            width: 100%;
+            max-width: 850px;
+        }
+
+        h1 {
+            font-size: 36px;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            padding: 40px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .input-group {
+            text-align: left;
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .input-group label span {
+            font-weight: 300;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        textarea {
+            height: 180px;
+            resize: none;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Bottom Buttons */
+        .action-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 25px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+
+        .btn-analyze {
+            background: linear-gradient(90deg, #8a2be2, #ff00ff, #00d4ff);
+            background-size: 200% auto;
+            border: none;
+            color: white;
+            padding: 12px 60px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: 0.5s;
+        }
+
+        .btn-analyze:hover {
+            background-position: right center;
+        }
+
+        .btn-clear {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 50px;
+            border-radius: 25px;
+            cursor: pointer;
+        }
+        
+        #result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 12px;
+            display: none;
+            font-weight: 600;
+            font-size: 18px;
+        }
+        .result-fake { background: rgba(255, 50, 50, 0.2); border: 1px solid rgba(255, 50, 50, 0.5); color: #ff9999; }
+        .result-real { background: rgba(50, 255, 50, 0.2); border: 1px solid rgba(50, 255, 50, 0.5); color: #99ff99; }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center; align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+        .modal-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%; max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute; top: 15px; right: 20px;
+            cursor: pointer; font-size: 24px; color: rgba(255,255,255,0.7);
+        }
+        .modal-card h2 { margin-bottom: 20px; }
+        .modal-card input { margin-bottom: 15px; }
+        .modal-btn {
+            background: linear-gradient(90deg, #8a2be2, #ff00ff);
+            border: none; padding: 10px 30px; border-radius: 20px;
+            color: white; font-weight: 600; cursor: pointer; width: 100%;
+        }
+        
+        .reasons-list { text-align: left; margin-top: 10px; font-size: 14px; font-weight: 400; list-style-position: inside; }
+
+        /* Theme Switcher */
+        .theme-switcher {
+            position: fixed; bottom: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px);
+            padding: 10px 15px; border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex; align-items: center; gap: 10px; z-index: 1000;
+        }
+        .theme-switcher select {
+            background: rgba(255, 255, 255, 0.1); color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3); padding: 5px 10px;
+            border-radius: 10px; outline: none; cursor: pointer;
+        }
+        .theme-switcher select option { background: #2e1a47; color: white; }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">
+            <div class="logo-icon">✓</div> TruthCheck
+        </div>
+        <ul class="nav-links">
+            <li><a href="#" class="active">Home</a></li>
+            <li><a href="#" id="nav-about">About</a></li>
+            <li><a href="#" id="nav-how">How It Works</a></li>
+        </ul>
+        <div class="auth-buttons">
+            <button class="btn-login" id="btn-nav-login">Log In</button>
+            <button class="btn-signup" id="btn-nav-signup">Sign Up</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Fake News Detection</h1>
+
+        <div class="glass-card">
+            <div class="input-group">
+                <label>Title <span>(optional)</span></label>
+                <input type="text" placeholder="Enter title here...">
+            </div>
+
+            <div class="input-group">
+                <label>Article</label>
+                <textarea placeholder="Paste the full article here..."></textarea>
+            </div>
+
+            <div class="action-area">
+                <input type="file" id="file-upload" accept=".txt" style="display: none;">
+                <button class="btn-secondary" id="btn-upload">
+                    <span>📄</span> Upload File
+                </button>
+                
+                <button class="btn-analyze">Analyze</button>
+                
+                <button class="btn-clear">Clear</button>
+            </div>
+            
+            <div id="result-box"></div>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-card">
+            <span class="modal-close" onclick="closeModal()">×</span>
+            <h2 id="modal-title"></h2>
+            <div id="modal-content"></div>
+        </div>
+    </div>
+    
+    <div class="theme-switcher">
+        <span>🎨 Theme:</span>
+        <select id="theme-select">
+            <option value="theme-cosmic">Cosmic Purple</option>
+            <option value="theme-ocean">Deep Ocean</option>
+            <option value="theme-sunset">Twilight Sunset</option>
+            <option value="theme-forest">Mystic Forest</option>
+            <option value="theme-midnight">Midnight Dark</option>
+        </select>
+    </div>
+    
+    <script>
+        // Theme Logic
+        const themeSelect = document.getElementById("theme-select");
+        const savedTheme = localStorage.getItem("app-theme") || "theme-cosmic";
+        document.body.className = savedTheme;
+        if (themeSelect) {
+            themeSelect.value = savedTheme;
+            themeSelect.addEventListener("change", (e) => {
+                const newTheme = e.target.value;
+                document.body.className = newTheme;
+                localStorage.setItem("app-theme", newTheme);
+            });
+        }
+
+        // Modals Logic
+        const modal = document.getElementById("modal");
+        const modalTitle = document.getElementById("modal-title");
+        const modalContent = document.getElementById("modal-content");
+
+        function showModal(title, html) {
+            modalTitle.textContent = title;
+            modalContent.innerHTML = html;
+            modal.style.display = "flex";
+        }
+
+        function closeModal() {
+            modal.style.display = "none";
+        }
+        
+        document.getElementById("nav-about").addEventListener("click", (e) => { 
+            e.preventDefault(); 
+            showModal("About TruthCheck", `
+                <div style="text-align: left; opacity: 0.9; line-height: 1.6;">
+                    <p style="margin-bottom: 10px;"><strong>TruthCheck</strong> was built with a core mission: to empower readers in the age of rapid information spread. Misinformation shapes narratives, shifts markets, and changes lives.</p>
+                    <p style="margin-bottom: 10px;">By utilizing cutting-edge ML techniques—such as Term Frequency-Inverse Document Frequency (TF-IDF) feature engineering and ensemble classification algorithms—our engine is capable of finding the invisible linguistic signatures inherent to fake news.</p>
+                    <p>Designed with a premium interface, TruthCheck focuses not only on raw detection but on <b>Explainability</b>. Our goal is to train you on what to look out for.</p>
+                </div>
+            `); 
+        });
+        
+        document.getElementById("nav-how").addEventListener("click", (e) => { 
+            e.preventDefault(); 
+            showModal("How It Works", `
+                <div style="text-align: left; opacity: 0.9; line-height: 1.6;">
+                    <p style="margin-bottom: 15px;">TruthCheck transforms plain text into quantifiable intelligence in three steps:</p>
+                    <ol style="margin-left: 20px; list-style-type: decimal;">
+                        <li style="margin-bottom: 10px;"><b>Data Ingestion:</b> You paste an article (or upload a local file), which is cleansed of excessive whitespace and noise.</li>
+                        <li style="margin-bottom: 10px;"><b>Model Vectorization:</b> The text is transformed into numerical vectors focusing on term uniqueness compared to our vast dataset of known verified/fake texts.</li>
+                        <li style="margin-bottom: 10px;"><b>Classification Engine:</b> The Logistic Classifier maps out the probability curve and outputs the confidence score alongside human-readable reasoning heuristics.</li>
+                    </ol>
+                </div>
+            `); 
+        });
+        document.getElementById("btn-nav-login").addEventListener("click", () => { showModal("Log In", "<input type='text' placeholder='Email'><input type='password' placeholder='Password'><button class='modal-btn' onclick='closeModal()'>Submit</button>"); });
+        document.getElementById("btn-nav-signup").addEventListener("click", () => { showModal("Sign Up", "<input type='text' placeholder='Name'><input type='text' placeholder='Email'><input type='password' placeholder='Password'><button class='modal-btn' onclick='closeModal()'>Create Account</button>"); });
+
+        // File Upload Logic
+        const fileInput = document.getElementById("file-upload");
+        const btnUpload = document.getElementById("btn-upload");
+        btnUpload.addEventListener("click", () => { fileInput.click(); });
+        
+        fileInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { articleInput.value = e.target.result; };
+            reader.readAsText(file);
+        });
+
+        const analyzeBtn = document.querySelector(".btn-analyze");
+        const clearBtn = document.querySelector(".btn-clear");
+        const titleInput = document.querySelector("input[type='text']");
+        const articleInput = document.querySelector("textarea");
+        const resultBox = document.getElementById("result-box");
+
+        analyzeBtn.addEventListener("click", async () => {
+            const title = titleInput.value;
+            const article = articleInput.value;
+
+            if (!article) {
+                alert("Please enter article content!");
+                return;
+            }
+
+            analyzeBtn.textContent = "Analyzing...";
+            resultBox.style.display = "none";
+
+            try {
+                const fullText = (title ? title + ". " : "") + article;
+                const response = await fetch("/predict", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: fullText })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultBox.style.display = "block";
+                    resultBox.textContent = "Error: " + data.error;
+                    resultBox.style.color = "red";
+                } else {
+                    sessionStorage.setItem("analysisResult", JSON.stringify(data));
+                    window.location.href = "/result";
+                }
+            } catch (error) {
+                alert("Error connecting to server!");
+                console.error(error);
+            } finally {
+                analyzeBtn.textContent = "Analyze";
+            }
+        });
+
+        clearBtn.addEventListener("click", () => {
+            titleInput.value = "";
+            articleInput.value = "";
+            resultBox.style.display = "none";
+            fileInput.value = "";
+        });
+    </script>
+</body>
+</html>

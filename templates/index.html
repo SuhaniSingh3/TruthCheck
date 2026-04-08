@@ -95,25 +95,6 @@
             padding-bottom: 5px;
         }
 
-        .auth-buttons {
-            display: flex;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 5px;
-            border-radius: 25px;
-            backdrop-filter: blur(5px);
-        }
-
-        .btn-login, .btn-signup {
-            padding: 8px 20px;
-            border-radius: 20px;
-            border: none;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .btn-login { background: rgba(255, 255, 255, 0.2); color: white; }
-        .btn-signup { background: transparent; color: white; }
 
         /* Main Container */
         .container {
@@ -302,10 +283,6 @@
             <li><a href="#" id="nav-about">About</a></li>
             <li><a href="#" id="nav-how">How It Works</a></li>
         </ul>
-        <div class="auth-buttons">
-            <button class="btn-login" id="btn-nav-login">Log In</button>
-            <button class="btn-signup" id="btn-nav-signup">Sign Up</button>
-        </div>
     </nav>
 
     <div class="container">
@@ -410,8 +387,6 @@
                 </div>
             `); 
         });
-        document.getElementById("btn-nav-login").addEventListener("click", () => { showModal("Log In", "<input type='text' placeholder='Email'><input type='password' placeholder='Password'><button class='modal-btn' onclick='closeModal()'>Submit</button>"); });
-        document.getElementById("btn-nav-signup").addEventListener("click", () => { showModal("Sign Up", "<input type='text' placeholder='Name'><input type='text' placeholder='Email'><input type='password' placeholder='Password'><button class='modal-btn' onclick='closeModal()'>Create Account</button>"); });
 
         // File Upload Logic
         const fileInput = document.getElementById("file-upload");

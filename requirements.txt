@@ -1,8 +1,4 @@
 flask
-scikit-learn
-pandas
-numpy
-nltk
-requests
-joblib
+groq
 python-dotenv
+requests

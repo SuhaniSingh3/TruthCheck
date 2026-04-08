@@ -97,6 +97,7 @@
         .result-real { background: rgba(50, 255, 50, 0.2); border: 2px solid rgba(50, 255, 50, 0.5); color: #b3ffb3; text-shadow: 0 0 10px rgba(50,255,50,0.5); }
         
         .confidence { font-size: 18px; font-weight: 300; display: block; margin-top: 10px; opacity: 0.9; text-shadow: none; }
+        .source-tag { font-size: 12px; display: inline-block; padding: 4px 12px; background: rgba(255,255,255,0.1); border-radius: 12px; margin-top: 15px; text-transform: uppercase; letter-spacing: 1px; }
 
         .section-title { font-size: 22px; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px;}
         
@@ -181,6 +182,14 @@
             <div id="verdict-box" class="verdict-box">
                 <span id="verdict-label">LOADING...</span>
                 <span class="confidence" id="verdict-confidence">Confidence: --%</span>
+                <div class="source-tag" id="verdict-source">Source: --</div>
+            </div>
+
+            <div id="summary-section" style="display: none; margin-bottom: 30px;">
+                <div class="section-title">Analysis Summary</div>
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 20px; border-radius: 10px; font-style: italic; color: rgba(255,255,255,0.9);">
+                    <p id="summary-content"></p>
+                </div>
             </div>
 
             <div class="section-title">Why did we reach this conclusion?</div>
@@ -250,6 +259,14 @@
                     verdictBox.classList.add("result-fake");
                 } else {
                     verdictBox.classList.add("result-real");
+                }
+
+                document.getElementById("verdict-source").textContent = `Analysis via: ${data.source || 'Standard Engine'}`;
+
+                // Setup Summary
+                if (data.summary) {
+                    document.getElementById("summary-section").style.display = "block";
+                    document.getElementById("summary-content").textContent = data.summary;
                 }
 
                 // Setup Reasons

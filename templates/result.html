@@ -34,14 +34,50 @@
 
         body::before {
             content: "";
-            position: absolute; /* Kept absolute but removed fixed bounds so it scrolls if needed, or better make it fixed */
+            position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-image: radial-gradient(white 1px, transparent 1px);
+            background-image: radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px);
             background-size: 50px 50px;
             opacity: 0.1;
-            z-index: -1;
+            z-index: 1;
             position: fixed;
+            pointer-events: none;
         }
+
+        /* Animated Background Blobs */
+        .background-blob {
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: -1;
+            opacity: 0.6;
+            animation: move 20s infinite alternate;
+        }
+
+        .blob-1 { top: -100px; left: -100px; background: rgba(138, 43, 226, 0.4); }
+        .blob-2 { bottom: -150px; right: -100px; background: rgba(0, 212, 255, 0.3); animation-delay: -5s; }
+        .blob-3 { top: 20%; right: 10%; background: rgba(255, 0, 255, 0.2); animation-direction: alternate-reverse; animation-duration: 25s; }
+        .blob-4 { bottom: 10%; left: 20%; background: rgba(75, 0, 130, 0.3); animation-duration: 18s; }
+
+        @keyframes move {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(100px, 100px) scale(1.2); }
+        }
+
+        /* Theme Overrides for Blobs */
+        body.theme-ocean .blob-1 { background: rgba(0, 100, 255, 0.4); }
+        body.theme-ocean .blob-2 { background: rgba(0, 255, 200, 0.3); }
+        
+        body.theme-sunset .blob-1 { background: rgba(255, 69, 0, 0.3); }
+        body.theme-sunset .blob-2 { background: rgba(255, 20, 147, 0.3); }
+        
+        body.theme-forest .blob-1 { background: rgba(34, 139, 34, 0.4); }
+        body.theme-forest .blob-2 { background: rgba(173, 255, 47, 0.3); }
+
+        body.theme-midnight .blob-1 { background: rgba(25, 25, 112, 0.5); }
+        body.theme-midnight .blob-2 { background: rgba(75, 0, 130, 0.3); }
 
         /* Navigation Bar */
         nav {
@@ -160,6 +196,10 @@
     </style>
 </head>
 <body>
+    <div class="background-blob blob-1"></div>
+    <div class="background-blob blob-2"></div>
+    <div class="background-blob blob-3"></div>
+    <div class="background-blob blob-4"></div>
 
     <nav>
         <a href="/" class="logo">

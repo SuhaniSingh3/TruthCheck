@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Deepfake Video Detection — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="analysis-page glass">
+  <h2>Deepfake Video Forensics</h2>
+  <p>Upload a video clip to sample key frames, detect temporal anomalies, and inspect facial consistency.</p>
+  <div class="upload-zone glass">
+    <input type="file" id="video-upload" accept=".mp4,.avi,.mov,.mkv">
+    <p>Drag & Drop Video or Click to Select File (MP4, MOV, MKV)</p>
+  </div>
+  <div id="video-result" class="result-box glass" style="display: none;"></div>
+</div>
+{% endblock %}

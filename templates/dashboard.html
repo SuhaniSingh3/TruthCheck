@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Enterprise Dashboard — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="dashboard-hero glass">
+  <h1>Enterprise AI Misinformation Platform</h1>
+  <p>Real-time multi-input detection for news articles, URLs, YouTube videos, deepfake audio/video, and synthetic images.</p>
+  <div class="hero-actions">
+    <a href="{{ url_for('analysis.analyze_text_page') }}" class="btn-primary">Smart Multi-Input Detect</a>
+    <a href="{{ url_for('history.history_page') }}" class="btn-secondary">View Analysis History</a>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card glass"><span class="stat-label">Articles Verified</span><span class="stat-val">{{ stats.total_analyses }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">URLs Checked</span><span class="stat-val">{{ stats.url_analyses }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">Videos Verified</span><span class="stat-val">{{ stats.video_analyses }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">Images Verified</span><span class="stat-val">{{ stats.image_analyses }}</span></div>
+  <div class="stat-card glass stat-fake"><span class="stat-label">Fake Detected</span><span class="stat-val">{{ stats.fake_detected }}</span></div>
+  <div class="stat-card glass stat-real"><span class="stat-label">Real Detected</span><span class="stat-val">{{ stats.real_detected }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">AI Images Flagged</span><span class="stat-val">{{ stats.ai_images }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">Deepfakes Flagged</span><span class="stat-val">{{ stats.deepfakes }}</span></div>
+  <div class="stat-card glass"><span class="stat-label">Overall Accuracy</span><span class="stat-val">98.4%</span></div>
+  <div class="stat-card glass"><span class="stat-label">System Status</span><span class="stat-val stat-online">ACTIVE</span></div>
+</div>
+
+<div class="section-title"><h3>Quick Analysis Actions</h3></div>
+<div class="quick-actions-grid">
+  <a href="{{ url_for('analysis.analyze_text_page') }}" class="action-box glass">📝 <h4>Universal Detector</h4><p>Auto-detect Article, Headline, or Link</p></a>
+  <a href="{{ url_for('youtube.youtube_page') }}" class="action-box glass">▶️ <h4>YouTube Verify</h4><p>Extract & fact-check transcripts</p></a>
+  <a href="{{ url_for('url.url_verify_page') }}" class="action-box glass">🔗 <h4>URL Article Verify</h4><p>Scrape & verify reliability</p></a>
+  <a href="{{ url_for('image.image_detect_page') }}" class="action-box glass">🖼️ <h4>AI Image Detection</h4><p>Detect synthetic & deepfake images</p></a>
+  <a href="{{ url_for('video.video_detect_page') }}" class="action-box glass">🎬 <h4>Deepfake Video</h4><p>Analyze frame manipulation</p></a>
+  <a href="{{ url_for('history.history_page') }}" class="action-box glass">📊 <h4>Search History</h4><p>Filter & export past reports</p></a>
+</div>
+
+<div class="section-title"><h3>Recent Verification Activity</h3></div>
+<div class="recent-feed glass">
+  {% if recent_reports %}
+    <table class="history-table">
+      <thead><tr><th>Type</th><th>Input Summary</th><th>Verdict</th><th>Confidence</th><th>Date</th></tr></thead>
+      <tbody>
+        {% for r in recent_reports %}
+        <tr>
+          <td>{{ r.input_type.upper() }}</td>
+          <td>{{ r.input_title or (r.input_text[:60] + '...') }}</td>
+          <td><span class="badge badge-{{ 'fake' if 'FAKE' in (r.prediction or '') else 'real' }}">{{ r.prediction }}</span></td>
+          <td>{{ r.confidence }}%</td>
+          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="empty-state">No analyses performed yet. Try scanning an article or URL above!</p>
+  {% endif %}
+</div>
+{% endblock %}

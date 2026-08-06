@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}URL & Article Verification — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="analysis-page glass">
+  <h2>Website Article Verification & Domain Trust Check</h2>
+  <p>Paste an article URL to verify source credibility, clickbait rating, and factual claims.</p>
+  <div class="form-container">
+    <input type="text" id="url-input" class="input-full" placeholder="https://www.bbc.com/news/...">
+    <button id="url-analyze-btn" class="btn-primary">Scrape & Verify →</button>
+  </div>
+  <div id="url-result" class="result-box glass" style="display: none;"></div>
+</div>
+{% endblock %}

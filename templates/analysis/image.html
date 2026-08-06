@@ -1,0 +1,900 @@
+{% extends 'base.html' %}
+{% block title %}AI Image Verification — TruthCheck{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ═══════════════════════════════════════════════
+   AI IMAGE VERIFICATION — Page Styles
+   All classes prefixed with .iv- to avoid conflicts
+═══════════════════════════════════════════════ */
+
+.iv-page-header {
+  text-align: center;
+  padding: 2rem 0 1.5rem;
+}
+.iv-page-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.4rem;
+}
+.iv-page-header p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* ── Upload Zone ── */
+.iv-upload-zone {
+  border: 2px dashed var(--border-glass);
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, transform 0.2s;
+  position: relative;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+}
+.iv-upload-zone:hover,
+.iv-upload-zone.iv-drag-over {
+  border-color: #a855f7;
+  background: rgba(168, 85, 247, 0.07);
+  transform: scale(1.01);
+}
+.iv-upload-zone.iv-drag-over {
+  border-style: solid;
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);
+}
+.iv-upload-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: block;
+  animation: iv-float 3s ease-in-out infinite;
+}
+@keyframes iv-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+.iv-upload-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  color: var(--text-main);
+}
+.iv-upload-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.2rem;
+}
+.iv-upload-badges {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.2rem;
+}
+.iv-badge-fmt {
+  background: rgba(168, 85, 247, 0.15);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  color: #c4b5fd;
+  padding: 0.2rem 0.7rem;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.iv-upload-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.iv-btn-upload,
+.iv-btn-paste,
+.iv-btn-screenshot {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.iv-btn-upload {
+  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  color: #fff;
+}
+.iv-btn-paste {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+}
+.iv-btn-screenshot {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+}
+.iv-btn-upload:hover,
+.iv-btn-paste:hover,
+.iv-btn-screenshot:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+.iv-hint {
+  margin-top: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+#iv-file-input { display: none; }
+
+/* ── Preview Panel ── */
+.iv-preview-panel {
+  display: none;
+  margin-top: 1.5rem;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--bg-card);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--border-glass);
+  animation: iv-fadein 0.4s ease;
+}
+@keyframes iv-fadein {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.iv-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--border-glass);
+}
+.iv-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.iv-preview-filename {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+.iv-preview-size {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.iv-preview-hash {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  word-break: break-all;
+}
+.iv-preview-controls {
+  display: flex;
+  gap: 0.6rem;
+}
+.iv-btn-remove {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #fca5a5;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.iv-btn-remove:hover { background: rgba(239,68,68,0.3); }
+.iv-btn-verify {
+  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  border: none;
+  color: #fff;
+  padding: 0.5rem 1.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.92rem;
+  transition: transform 0.15s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.iv-btn-verify:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(168,85,247,0.4);
+}
+.iv-btn-verify:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.iv-preview-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+.iv-preview-img-wrap {
+  flex: 0 0 260px;
+  max-width: 260px;
+  height: 200px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.iv-preview-img-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+.iv-preview-info {
+  flex: 1;
+  padding: 1.2rem 1.4rem;
+  min-width: 0;
+}
+.iv-info-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+.iv-info-row {
+  margin-bottom: 0.75rem;
+  font-size: 0.88rem;
+  color: var(--text-main);
+}
+
+/* ── Loader ── */
+.iv-loader {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  padding: 2.5rem;
+  text-align: center;
+}
+.iv-loader-ring {
+  width: 60px;
+  height: 60px;
+  border: 5px solid rgba(168,85,247,0.2);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: iv-spin 0.9s linear infinite;
+}
+@keyframes iv-spin {
+  to { transform: rotate(360deg); }
+}
+.iv-loader-label {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.iv-progress-bar-wrap {
+  width: 100%;
+  max-width: 300px;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.iv-progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #a855f7, #06b6d4);
+  border-radius: 99px;
+  transition: width 0.4s ease;
+  animation: iv-progress-anim 2s ease-in-out infinite;
+}
+@keyframes iv-progress-anim {
+  0%   { width: 5%; }
+  50%  { width: 85%; }
+  100% { width: 95%; }
+}
+.iv-steps {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.iv-step {
+  font-size: 0.72rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+.iv-step.iv-step-active {
+  background: rgba(168,85,247,0.2);
+  border-color: rgba(168,85,247,0.5);
+  color: #c4b5fd;
+}
+.iv-step.iv-step-done {
+  background: rgba(16,185,129,0.15);
+  border-color: rgba(16,185,129,0.4);
+  color: #6ee7b7;
+}
+
+/* ── Result Card ── */
+.iv-result-card {
+  display: none;
+  border-radius: 20px;
+  overflow: hidden;
+  animation: iv-fadein 0.5s ease;
+  margin-top: 1.5rem;
+}
+.iv-result-header {
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.iv-verdict-icon {
+  font-size: 3rem;
+  line-height: 1;
+}
+.iv-verdict-text {
+  flex: 1;
+}
+.iv-verdict-label {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.iv-verdict-sub {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  margin-top: 0.2rem;
+}
+/* Color states */
+.iv-state-real {
+  background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(5,150,105,0.1));
+  border: 1px solid rgba(16,185,129,0.35);
+}
+.iv-state-real .iv-verdict-label { color: #34d399; }
+.iv-state-suspicious {
+  background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(217,119,6,0.1));
+  border: 1px solid rgba(245,158,11,0.35);
+}
+.iv-state-suspicious .iv-verdict-label { color: #fbbf24; }
+.iv-state-fake {
+  background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(220,38,38,0.1));
+  border: 1px solid rgba(239,68,68,0.35);
+}
+.iv-state-fake .iv-verdict-label { color: #f87171; }
+
+/* ── Gauge ── */
+.iv-gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 120px;
+}
+#iv-gauge-canvas {
+  display: block;
+}
+.iv-gauge-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Result Body ── */
+.iv-result-body {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border-glass);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.iv-reason-box {
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid #a855f7;
+  border-radius: 0 12px 12px 0;
+  padding: 1rem 1.2rem;
+}
+.iv-reason-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #a78bfa;
+  margin-bottom: 0.4rem;
+}
+.iv-reason-text {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+
+/* ── Signal Breakdown ── */
+.iv-signals-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 0.8rem;
+}
+.iv-signal-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-bottom: 0.7rem;
+}
+.iv-signal-name {
+  width: 160px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.iv-signal-bar-wrap {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.iv-signal-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s cubic-bezier(.25,.8,.25,1);
+  width: 0%;
+}
+.iv-signal-score {
+  width: 40px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+/* Bar colors by level */
+.iv-bar-low    { background: linear-gradient(90deg, #10b981, #34d399); }
+.iv-bar-medium { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.iv-bar-high   { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+/* ── Metadata Grid ── */
+.iv-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+.iv-meta-chip {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-glass);
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.iv-meta-chip-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.iv-meta-chip-val {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+.iv-chip-yes { color: #34d399; }
+.iv-chip-no  { color: #f87171; }
+
+/* ── Result Actions ── */
+.iv-result-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem 2rem 1.5rem;
+  border-top: 1px solid var(--border-glass);
+}
+.iv-btn-report {
+  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  border: none;
+  color: #fff;
+  padding: 0.55rem 1.3rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.iv-btn-report:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(168,85,247,0.4);
+}
+.iv-btn-new {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  padding: 0.55rem 1.3rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.88rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background 0.2s;
+}
+.iv-btn-new:hover { background: rgba(255,255,255,0.14); }
+
+/* ── History Section ── */
+.iv-history-section {
+  margin-top: 2.5rem;
+}
+.iv-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.iv-history-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.iv-btn-clear-history {
+  background: none;
+  border: 1px solid var(--border-glass);
+  color: var(--text-muted);
+  padding: 0.3rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  transition: color 0.2s, border-color 0.2s;
+}
+.iv-btn-clear-history:hover { color: #f87171; border-color: rgba(239,68,68,0.4); }
+.iv-history-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  border: 1px dashed var(--border-glass);
+  border-radius: 16px;
+}
+.iv-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.iv-history-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  transition: transform 0.15s;
+  cursor: default;
+}
+.iv-history-item:hover { transform: translateX(4px); }
+.iv-history-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+}
+.iv-history-info { flex: 1; min-width: 0; }
+.iv-history-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.iv-history-ts {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.iv-history-hash {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+.iv-history-verdict {
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.3rem 0.8rem;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+.iv-hv-real { background: rgba(16,185,129,0.15); color: #34d399; }
+.iv-hv-suspicious { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.iv-hv-fake { background: rgba(239,68,68,0.15); color: #f87171; }
+.iv-history-conf {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  width: 48px;
+  text-align: right;
+}
+
+/* Duplicate warning */
+.iv-duplicate-warn {
+  display: none;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem;
+  font-size: 0.88rem;
+  color: #fbbf24;
+  margin-bottom: 1rem;
+  animation: iv-fadein 0.3s ease;
+}
+
+/* Clipboard paste hint */
+.iv-paste-hint {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  background: linear-gradient(135deg, #a855f7, #06b6d4);
+  color: #fff;
+  padding: 0.75rem 1.2rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  z-index: 999;
+  animation: iv-fadein 0.3s ease;
+  pointer-events: none;
+}
+
+/* Print styles for PDF report */
+@media print {
+  .navbar, .chat-widget, .iv-upload-zone, .iv-preview-panel .iv-preview-controls,
+  .iv-result-actions, .iv-history-section, canvas#particles-canvas,
+  .iv-btn-report, .iv-btn-new, .iv-btn-remove, .iv-btn-verify,
+  .theme-toggle-btn, .lang-selector {
+    display: none !important;
+  }
+  .iv-result-card { display: block !important; border: 1px solid #ccc; }
+  body { background: #fff !important; color: #000 !important; }
+  .iv-result-header { background: #f3f4f6 !important; }
+  .iv-verdict-label { -webkit-text-fill-color: inherit !important; color: inherit !important; }
+}
+
+/* Mobile responsive */
+@media (max-width: 640px) {
+  .iv-preview-body { flex-direction: column; }
+  .iv-preview-img-wrap { max-width: 100%; width: 100%; height: 180px; }
+  .iv-result-header { flex-direction: column; align-items: flex-start; }
+  .iv-signal-name { width: 120px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="iv-page-header">
+  <h1>🔍 AI Image Verification</h1>
+  <p>Upload any image — we run 6 forensic signals to detect AI generation, deepfakes, and manipulation.</p>
+</div>
+
+<div id="iv-duplicate-warn" class="iv-duplicate-warn">
+  ⚠️ <strong>Duplicate Detected:</strong> This image was already verified. Showing fresh analysis below.
+</div>
+
+<!-- ── Upload Zone ── -->
+<div id="iv-upload-zone" class="iv-upload-zone glass" role="button" tabindex="0"
+     aria-label="Image upload area — click, drag, or paste an image">
+  <input type="file" id="iv-file-input" accept=".jpg,.jpeg,.png,.webp" aria-label="Select image file">
+  <span class="iv-upload-icon">🖼️</span>
+  <div class="iv-upload-title">Drop image here, paste from clipboard, or click to browse</div>
+  <div class="iv-upload-subtitle">Supports JPG, JPEG, PNG, WEBP · Maximum 20 MB</div>
+  <div class="iv-upload-badges">
+    <span class="iv-badge-fmt">JPG</span>
+    <span class="iv-badge-fmt">JPEG</span>
+    <span class="iv-badge-fmt">PNG</span>
+    <span class="iv-badge-fmt">WEBP</span>
+    <span class="iv-badge-fmt">Max 20 MB</span>
+  </div>
+  <div class="iv-upload-actions">
+    <button class="iv-btn-upload" id="iv-btn-browse" type="button">
+      📁 Browse Files
+    </button>
+    <button class="iv-btn-paste" id="iv-btn-paste" type="button">
+      📋 Paste Image (Ctrl+V)
+    </button>
+    <button class="iv-btn-screenshot" id="iv-btn-screenshot" type="button">
+      📸 Screenshot
+    </button>
+  </div>
+  <div class="iv-hint">💡 You can also drag an image from another browser tab or window</div>
+</div>
+
+<!-- ── Preview Panel ── -->
+<div id="iv-preview-panel" class="iv-preview-panel">
+  <div class="iv-preview-header">
+    <div class="iv-preview-meta">
+      <div class="iv-preview-filename" id="iv-preview-filename">image.jpg</div>
+      <div class="iv-preview-size" id="iv-preview-size">—</div>
+      <div class="iv-preview-hash" id="iv-preview-hash-display"></div>
+    </div>
+    <div class="iv-preview-controls">
+      <button class="iv-btn-remove" id="iv-btn-remove" type="button">✕ Remove</button>
+      <button class="iv-btn-verify" id="iv-btn-verify" type="button">
+        <span id="iv-verify-icon">🔬</span>
+        <span id="iv-verify-label">Verify Image</span>
+      </button>
+    </div>
+  </div>
+  <div class="iv-preview-body">
+    <div class="iv-preview-img-wrap">
+      <img id="iv-preview-img" src="" alt="Preview">
+    </div>
+    <div class="iv-preview-info">
+      <div class="iv-info-label">SHA-256 Hash</div>
+      <div class="iv-info-row" id="iv-hash-row" style="font-family:monospace;font-size:0.72rem;word-break:break-all;color:var(--text-muted);">Computing…</div>
+      <div class="iv-info-label" style="margin-top:0.5rem;">Dimensions</div>
+      <div class="iv-info-row" id="iv-dimensions-row">—</div>
+      <div class="iv-info-label" style="margin-top:0.5rem;">File Type</div>
+      <div class="iv-info-row" id="iv-type-row">—</div>
+    </div>
+  </div>
+
+  <!-- Loader (shown during analysis) -->
+  <div id="iv-loader" class="iv-loader">
+    <div class="iv-loader-ring"></div>
+    <div class="iv-loader-label" id="iv-loader-label">Initializing forensic pipeline…</div>
+    <div class="iv-progress-bar-wrap">
+      <div class="iv-progress-bar-fill" id="iv-progress-fill"></div>
+    </div>
+    <div class="iv-steps" id="iv-steps">
+      <span class="iv-step" data-step="ela">ELA Analysis</span>
+      <span class="iv-step" data-step="noise">Noise Pattern</span>
+      <span class="iv-step" data-step="freq">Frequency</span>
+      <span class="iv-step" data-step="jpeg">JPEG Artifacts</span>
+      <span class="iv-step" data-step="meta">Metadata</span>
+      <span class="iv-step" data-step="ai">AI Detection</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Result Card ── -->
+<div id="iv-result-card" class="iv-result-card glass">
+  <!-- Header: verdict + gauge -->
+  <div class="iv-result-header" id="iv-result-header">
+    <div class="iv-verdict-icon" id="iv-verdict-icon">—</div>
+    <div class="iv-verdict-text">
+      <div class="iv-verdict-label" id="iv-verdict-label">—</div>
+      <div class="iv-verdict-sub" id="iv-verdict-sub">—</div>
+    </div>
+    <div class="iv-gauge-wrap">
+      <canvas id="iv-gauge-canvas" width="120" height="70" aria-label="Confidence gauge"></canvas>
+      <div class="iv-gauge-label">Confidence Score</div>
+    </div>
+  </div>
+
+  <!-- Body: reason + signals + metadata -->
+  <div class="iv-result-body">
+    <!-- Reason -->
+    <div class="iv-reason-box">
+      <div class="iv-reason-title">🧠 Forensic Analysis</div>
+      <div class="iv-reason-text" id="iv-reason-text">—</div>
+    </div>
+
+    <!-- Signal Breakdown -->
+    <div>
+      <div class="iv-signals-title">Signal Breakdown (Suspicious Score per Channel)</div>
+      <div id="iv-signals-list">
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">ELA (Editing)</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-ela"></div></div>
+          <div class="iv-signal-score" id="iv-score-ela">—</div>
+        </div>
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">Noise Pattern</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-noise"></div></div>
+          <div class="iv-signal-score" id="iv-score-noise">—</div>
+        </div>
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">Frequency Domain</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-freq"></div></div>
+          <div class="iv-signal-score" id="iv-score-freq">—</div>
+        </div>
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">JPEG Artifacts</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-jpeg"></div></div>
+          <div class="iv-signal-score" id="iv-score-jpeg">—</div>
+        </div>
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">Metadata</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-meta"></div></div>
+          <div class="iv-signal-score" id="iv-score-meta">—</div>
+        </div>
+        <div class="iv-signal-row">
+          <div class="iv-signal-name">AI Detection CNN</div>
+          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-ai"></div></div>
+          <div class="iv-signal-score" id="iv-score-ai">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Metadata chips -->
+    <div>
+      <div class="iv-signals-title">Image Metadata</div>
+      <div class="iv-meta-grid" id="iv-meta-grid">
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">EXIF Data</span>
+          <span class="iv-meta-chip-val" id="iv-meta-exif">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">GPS Location</span>
+          <span class="iv-meta-chip-val" id="iv-meta-gps">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">Camera</span>
+          <span class="iv-meta-chip-val" id="iv-meta-camera">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">Software</span>
+          <span class="iv-meta-chip-val" id="iv-meta-sw">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">GAN Probability</span>
+          <span class="iv-meta-chip-val" id="iv-meta-gan">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">Edit Probability</span>
+          <span class="iv-meta-chip-val" id="iv-meta-edit">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">Image Hash</span>
+          <span class="iv-meta-chip-val" id="iv-meta-hash" style="font-size:0.65rem;font-family:monospace;word-break:break-all;">—</span>
+        </div>
+        <div class="iv-meta-chip">
+          <span class="iv-meta-chip-label">Analyzed At</span>
+          <span class="iv-meta-chip-val" id="iv-meta-ts">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action bar -->
+  <div class="iv-result-actions">
+    <button class="iv-btn-report" id="iv-btn-download-report">
+      📄 Download PDF Report
+    </button>
+    <button class="iv-btn-new" id="iv-btn-new">
+      🔄 Verify Another Image
+    </button>
+  </div>
+</div>
+
+<!-- ── History Section ── -->
+<div class="iv-history-section">
+  <div class="iv-history-header">
+    <div class="iv-history-title">📋 Verification History</div>
+    <button class="iv-btn-clear-history" id="iv-btn-clear-history">Clear History</button>
+  </div>
+  <div id="iv-history-container">
+    <div class="iv-history-empty" id="iv-history-empty">
+      No verifications yet. Upload an image above to get started.
+    </div>
+    <div class="iv-history-list" id="iv-history-list"></div>
+  </div>
+</div>
+
+<!-- Hidden print report template -->
+<div id="iv-print-content" style="display:none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/image_verify.js') }}"></script>
+{% endblock %}

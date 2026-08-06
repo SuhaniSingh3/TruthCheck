@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TruthCheck — Enterprise AI Misinformation Platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <!-- Apply saved theme before page renders to prevent flash -->
+  <script>
+    (function() {
+      var theme = localStorage.getItem('truthcheck_theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="theme-cosmic">
+  <canvas id="particles-canvas"></canvas>
+  <div class="app-layout">
+    {% include 'partials/navbar.html' %}
+    <main class="main-content">
+      {% block content %}{% endblock %}
+    </main>
+    {% include 'partials/footer.html' %}
+  </div>
+  {% include 'partials/chat_widget.html' %}
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

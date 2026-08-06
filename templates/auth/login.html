@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block title %}Login — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="auth-card glass">
+  <h2>Welcome Back</h2>
+  <form method="POST" action="{{ url_for('auth.login') }}">
+    <div class="form-group">
+      <label>Username or Email</label>
+      <input type="text" name="username" required>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" name="password" required>
+    </div>
+    <button type="submit" class="btn-primary input-full">Log In</button>
+  </form>
+  <p><a href="{{ url_for('auth.signup') }}">Don't have an account? Sign Up</a></p>
+</div>
+{% endblock %}

@@ -1,4 +1,41 @@
+# ─── Core Flask Stack ────────────────────────────────────────────────────────
 flask
 groq
 python-dotenv
 requests
+flask-sqlalchemy
+flask-login
+flask-limiter
+werkzeug
+
+# ─── Content Extraction ──────────────────────────────────────────────────────
+youtube-transcript-api
+newspaper3k
+beautifulsoup4
+lxml
+
+# ─── Reporting ───────────────────────────────────────────────────────────────
+reportlab
+
+# ─── Image Processing ────────────────────────────────────────────────────────
+Pillow
+opencv-python-headless
+
+# ─── AI Image Verification Pipeline (NEW) ────────────────────────────────────
+# Required for multi-signal forensic analysis
+numpy
+scipy
+piexif
+
+# Optional: HuggingFace CNN-based AI image detection
+# Uncomment below to enable the AI-image-detector model (~250 MB download on first run).
+# Without these, the feature works using forensic signals only.
+# transformers
+# torch
+
+# ─── Utilities ───────────────────────────────────────────────────────────────
+langdetect
+waitress
+
+# ─── Multilingual ────────────────────────────────────────────────────────────
+langdetect

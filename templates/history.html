@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Analysis History — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="analysis-page glass">
+  <h2>Past Verification Reports</h2>
+  <p>Search, filter, favorite, and export your past verification reports.</p>
+  <div class="history-controls">
+    <input type="text" id="history-search" placeholder="Search report titles or text...">
+    <select id="history-filter-type">
+      <option value="">All Types</option>
+      <option value="text">Text / Headline</option>
+      <option value="url">URL</option>
+      <option value="youtube">YouTube</option>
+      <option value="image">Image</option>
+      <option value="video">Video</option>
+    </select>
+  </div>
+  <div id="history-list" class="recent-feed"></div>
+</div>
+{% endblock %}

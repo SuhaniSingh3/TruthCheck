@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}YouTube Video Verification — TruthCheck AI{% endblock %}
+{% block content %}
+<div class="analysis-page glass">
+  <h2>YouTube Video Misinformation Verification</h2>
+  <p>Paste any YouTube watch link or Short URL to extract captions, verify claims, and detect sensationalism.</p>
+  <div class="form-container">
+    <input type="text" id="youtube-url-input" class="input-full" placeholder="https://www.youtube.com/watch?v=...">
+    <button id="youtube-analyze-btn" class="btn-primary">Verify YouTube Video →</button>
+  </div>
+  <div id="youtube-result" class="result-box glass" style="display: none;"></div>
+</div>
+{% endblock %}

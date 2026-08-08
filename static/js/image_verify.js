@@ -1,14 +1,19 @@
 /**
- * TruthCheck — AI Image Verification Frontend
- * =============================================
+ * TruthCheck — AI Image Verification Frontend (v2)
+ * =================================================
  * Handles all client-side logic for the /image-detect page:
  *  - Drag-and-drop, file browse, clipboard paste (Ctrl+V), screenshot capture
  *  - Image preview with SHA-256 hash computation via Web Crypto API
  *  - FormData POST to /api/verify-image with animated loading steps
- *  - Confidence gauge animation (canvas)
- *  - Animated signal bar rendering
+ *  - Renders the 3-part result dashboard:
+ *      A. Overall Authenticity verdict
+ *      B. AI-Generated Detection card
+ *      C. Manipulation Detection card
+ *  - Forensic signal bars (ELA, Noise, Frequency, Splicing, Copy-Move)
+ *  - EXIF Metadata section
+ *  - Natural-language explanation
+ *  - Confidence gauge (canvas arc)
  *  - LocalStorage-based verification history (max 10 entries)
- *  - Duplicate image detection via hash comparison
  *  - PDF report via window.print()
  *
  * NOTE: This file is isolated and does NOT touch app.js globals.
@@ -27,7 +32,6 @@
   const previewImg      = document.getElementById("iv-preview-img");
   const previewFilename = document.getElementById("iv-preview-filename");
   const previewSize     = document.getElementById("iv-preview-size");
-  const previewHashDisp = document.getElementById("iv-preview-hash-display");
   const hashRow         = document.getElementById("iv-hash-row");
   const dimensionsRow   = document.getElementById("iv-dimensions-row");
   const typeRow         = document.getElementById("iv-type-row");
@@ -37,31 +41,23 @@
   const verifyLabel     = document.getElementById("iv-verify-label");
   const loader          = document.getElementById("iv-loader");
   const loaderLabel     = document.getElementById("iv-loader-label");
-  const resultCard      = document.getElementById("iv-result-card");
-  const resultHeader    = document.getElementById("iv-result-header");
-  const verdictIcon     = document.getElementById("iv-verdict-icon");
-  const verdictLabel    = document.getElementById("iv-verdict-label");
-  const verdictSub      = document.getElementById("iv-verdict-sub");
-  const reasonText      = document.getElementById("iv-reason-text");
-  const gaugeCanvas     = document.getElementById("iv-gauge-canvas");
+  const resultDashboard = document.getElementById("iv-result-dashboard");
   const historyList     = document.getElementById("iv-history-list");
   const historyEmpty    = document.getElementById("iv-history-empty");
   const btnClearHistory = document.getElementById("iv-btn-clear-history");
   const btnDownloadRpt  = document.getElementById("iv-btn-download-report");
   const btnNew          = document.getElementById("iv-btn-new");
   const duplicateWarn   = document.getElementById("iv-duplicate-warn");
+  const gaugeCanvas     = document.getElementById("iv-gauge-canvas");
 
-  const STORAGE_KEY = "truthcheck_iv_history";
-  const MAX_HISTORY = 10;
+  const STORAGE_KEY  = "truthcheck_iv_history_v2";
+  const MAX_HISTORY  = 10;
   const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-  const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+  const MAX_BYTES    = 20 * 1024 * 1024; // 20 MB
 
-  /** Currently selected File object */
   let currentFile = null;
-  /** SHA-256 hash of current file (hex string) */
   let currentHash = "";
-  /** Last analysis result */
-  let lastResult = null;
+  let lastResult  = null;
 
   /* ══════════════════════════════════════════════════════════════════
      INIT
@@ -77,23 +73,16 @@
      UPLOAD ZONE
   ══════════════════════════════════════════════════════════════════ */
   function setupUploadZone() {
-    // Click anywhere in zone → browse
     uploadZone.addEventListener("click", (e) => {
-      if (e.target === fileInput) return;
+      if (e.target === fileInput || e.target.closest("button")) return;
       fileInput.click();
     });
-
-    // Keyboard accessibility
     uploadZone.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") fileInput.click();
     });
-
-    // File input change
     fileInput.addEventListener("change", () => {
       if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
     });
-
-    // Drag & drop
     uploadZone.addEventListener("dragover", (e) => {
       e.preventDefault();
       uploadZone.classList.add("iv-drag-over");
@@ -112,21 +101,9 @@
   }
 
   function setupButtons() {
-    btnBrowse?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      fileInput.click();
-    });
-
-    btnPaste?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      await pasteFromClipboard();
-    });
-
-    btnScreenshot?.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      await captureScreenshot();
-    });
-
+    btnBrowse?.addEventListener("click", (e) => { e.stopPropagation(); fileInput.click(); });
+    btnPaste?.addEventListener("click", async (e) => { e.stopPropagation(); await pasteFromClipboard(); });
+    btnScreenshot?.addEventListener("click", async (e) => { e.stopPropagation(); await captureScreenshot(); });
     btnRemove?.addEventListener("click", resetUpload);
     btnVerify?.addEventListener("click", startVerification);
     btnNew?.addEventListener("click", resetAll);
@@ -135,7 +112,7 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     CLIPBOARD PASTE (Ctrl+V on entire document)
+     CLIPBOARD PASTE (Ctrl+V on document)
   ══════════════════════════════════════════════════════════════════ */
   function setupClipboardPaste() {
     document.addEventListener("paste", async (e) => {
@@ -181,7 +158,6 @@
       const imageCapture = new ImageCapture(track);
       const bitmap = await imageCapture.grabFrame();
       track.stop();
-
       const canvas = document.createElement("canvas");
       canvas.width = bitmap.width;
       canvas.height = bitmap.height;
@@ -191,7 +167,7 @@
         handleFile(file);
       }, "image/png");
     } catch {
-      showToast("Screenshot capture not supported in this browser. Please upload a screenshot file instead.", "warn");
+      showToast("Screenshot capture not supported. Please upload a screenshot file instead.", "warn");
     }
   }
 
@@ -207,12 +183,10 @@
      FILE HANDLING
   ══════════════════════════════════════════════════════════════════ */
   function handleFile(file) {
-    // Validate type
     if (!ALLOWED_TYPES.includes(file.type) && !isAllowedByName(file.name)) {
       showToast(`Unsupported file type: ${file.type || file.name}. Please use JPG, JPEG, PNG, or WEBP.`, "error");
       return;
     }
-    // Validate size
     if (file.size > MAX_BYTES) {
       showToast(`File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Maximum is 20 MB.`, "error");
       return;
@@ -220,9 +194,8 @@
 
     currentFile = file;
     currentHash = "";
-    lastResult = null;
+    lastResult  = null;
 
-    // Show preview
     const url = URL.createObjectURL(file);
     previewImg.src = url;
     previewFilename.textContent = file.name;
@@ -230,9 +203,7 @@
     typeRow.textContent = file.type || "image/" + file.name.split(".").pop();
     hashRow.textContent = "Computing SHA-256…";
     dimensionsRow.textContent = "Loading…";
-    previewHashDisp.textContent = "";
 
-    // Get image dimensions
     const tempImg = new Image();
     tempImg.onload = () => {
       dimensionsRow.textContent = `${tempImg.naturalWidth} × ${tempImg.naturalHeight} px`;
@@ -240,14 +211,9 @@
     };
     tempImg.src = url;
 
-    // Compute SHA-256
     computeSHA256(file).then((hash) => {
       currentHash = hash;
-      const short = hash.substring(0, 16) + "…";
       hashRow.textContent = hash;
-      previewHashDisp.textContent = "SHA-256: " + short;
-
-      // Check for duplicate
       if (isDuplicate(hash)) {
         duplicateWarn.style.display = "block";
         setTimeout(() => { duplicateWarn.style.display = "none"; }, 5000);
@@ -256,16 +222,14 @@
       }
     });
 
-    // Show preview panel, hide result
     previewPanel.style.display = "block";
     loader.style.display = "none";
-    resultCard.style.display = "none";
+    resultDashboard.style.display = "none";
     resetSteps();
     btnVerify.disabled = false;
     verifyIcon.textContent = "🔬";
     verifyLabel.textContent = "Verify Image";
 
-    // Scroll to preview
     previewPanel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
@@ -295,19 +259,18 @@
     verifyIcon.textContent = "⏳";
     verifyLabel.textContent = "Analyzing…";
 
-    // Show loader
     loader.style.display = "flex";
-    resultCard.style.display = "none";
+    resultDashboard.style.display = "none";
 
-    // Animate steps
-    const steps = ["ela", "noise", "freq", "jpeg", "meta", "ai"];
+    const steps = ["ela", "noise", "freq", "jpeg", "meta", "copymove", "ai"];
     const stepLabels = [
       "Running Error Level Analysis…",
       "Analyzing noise patterns…",
-      "Frequency domain analysis…",
+      "Frequency domain (FFT) analysis…",
       "JPEG artifact scoring…",
       "Extracting EXIF metadata…",
-      "AI detection model…",
+      "Copy-move detection…",
+      "AI generation analysis…",
     ];
     let stepIdx = 0;
     const stepInterval = setInterval(() => {
@@ -317,7 +280,7 @@
         loaderLabel.textContent = stepLabels[stepIdx];
         stepIdx++;
       }
-    }, 600);
+    }, 700);
 
     try {
       const formData = new FormData();
@@ -329,7 +292,6 @@
       });
 
       clearInterval(stepInterval);
-      // Mark all steps done
       steps.forEach(markStepDone);
       loaderLabel.textContent = "Rendering results…";
 
@@ -341,7 +303,6 @@
       const data = await resp.json();
       lastResult = data;
 
-      // Short pause for UX smoothness
       await sleep(400);
       loader.style.display = "none";
 
@@ -361,106 +322,207 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     RESULT RENDERING
+     RESULT RENDERING — 3-Part Dashboard
   ══════════════════════════════════════════════════════════════════ */
   function renderResult(data) {
-    const prediction = data.prediction || "Unknown";
-    const confidence = parseFloat(data.confidence) || 0;
-    const reason     = data.reason || "Analysis complete.";
-    const details    = data.details || {};
-    const meta       = data.metadata || {};
-    const timestamp  = data.timestamp ? new Date(data.timestamp).toLocaleString() : new Date().toLocaleString();
+    // Extract 3-part structure
+    const overall   = data.overall   || {};
+    const aiGen     = data.ai_generated || {};
+    const manip     = data.manipulation || {};
+    const forensics = data.forensics || {};
+    const metadata  = data.metadata  || {};
+    const timestamp = data.timestamp  ? new Date(data.timestamp).toLocaleString() : new Date().toLocaleString();
 
-    // ── Verdict styling ──
-    resultCard.className = "iv-result-card glass";
-    resultHeader.className = "iv-result-header";
+    // ── OVERALL RESULT ──
+    renderOverallCard(overall);
 
-    let stateClass, icon, sub;
-    if (prediction === "Fake") {
-      stateClass = "iv-state-fake";
-      icon = "🚨";
-      sub  = `${confidence.toFixed(1)}% confidence — Image likely AI-generated or manipulated`;
-    } else if (prediction === "Suspicious") {
-      stateClass = "iv-state-suspicious";
-      icon = "⚠️";
-      sub  = `${confidence.toFixed(1)}% suspicion score — Proceed with caution`;
-    } else {
-      stateClass = "iv-state-real";
-      icon = "✅";
-      sub  = `${confidence.toFixed(1)}% confidence — Image appears authentic`;
-    }
+    // ── AI-GENERATED CARD ──
+    renderDetectCard({
+      statusEl:  "iv-ai-status",
+      badgeEl:   "iv-ai-badge",
+      confBarEl: "iv-ai-conf-bar",
+      confValEl: "iv-ai-conf-val",
+      probBarEl: "iv-ai-prob-bar",
+      probValEl: "iv-ai-prob-val",
+      reasonEl:  "iv-ai-reason",
+      status:    aiGen.status    || "UNCERTAIN",
+      confidence: aiGen.confidence || 0,
+      probability: aiGen.probability || 0,
+      reason:    aiGen.reason    || "Analysis complete.",
+      barColor:  aiGen.status === "YES" ? "iv-bar-purple" : (aiGen.status === "NO" ? "iv-bar-green" : "iv-bar-gray"),
+    });
 
-    resultCard.classList.add(stateClass);
-    verdictIcon.textContent = icon;
-    verdictLabel.textContent = prediction === "Fake"
-      ? "FAKE / MANIPULATED"
-      : prediction === "Suspicious"
-        ? "SUSPICIOUS"
-        : "REAL IMAGE";
-    verdictSub.textContent = sub;
-    reasonText.textContent = reason;
+    // ── MANIPULATION CARD ──
+    renderDetectCard({
+      statusEl:  "iv-manip-status",
+      badgeEl:   "iv-manip-badge",
+      confBarEl: "iv-manip-conf-bar",
+      confValEl: "iv-manip-conf-val",
+      probBarEl: "iv-manip-prob-bar",
+      probValEl: "iv-manip-prob-val",
+      reasonEl:  "iv-manip-reason",
+      status:    manip.status    || "UNCERTAIN",
+      confidence: manip.confidence || 0,
+      probability: manip.probability || 0,
+      reason:    manip.reason    || "Analysis complete.",
+      barColor:  manip.status === "YES" ? "iv-bar-red" : (manip.status === "NO" ? "iv-bar-green" : "iv-bar-gray"),
+    });
 
-    // ── Gauge ──
-    drawGauge(gaugeCanvas, confidence, prediction);
+    // ── FORENSIC BARS ──
+    animateForensicBar("ela",       forensics.ela_score,            200);
+    animateForensicBar("noise",     forensics.noise_score,          350);
+    animateForensicBar("freq",      forensics.compression_score,    500);
+    animateForensicBar("splice",    forensics.splicing_probability, 650);
+    animateForensicBar("copymove",  forensics.copy_move_probability,800);
 
-    // ── Signal bars ──
-    animateBar("ela",   details.ela_score,           180);
-    animateBar("noise", details.noise_score,          360);
-    animateBar("freq",  details.freq_score,           540);
-    animateBar("jpeg",  details.jpeg_score,           720);
-    animateBar("meta",  details.metadata_score,       900);
-    animateBar("ai",    details.ai_detection_score,  1080);
+    // ── METADATA ──
+    renderMetadata(metadata, timestamp);
 
-    // ── Metadata chips ──
-    const exifEl = document.getElementById("iv-meta-exif");
-    const gpsEl  = document.getElementById("iv-meta-gps");
-    const camEl  = document.getElementById("iv-meta-camera");
-    const swEl   = document.getElementById("iv-meta-sw");
-    const ganEl  = document.getElementById("iv-meta-gan");
-    const editEl = document.getElementById("iv-meta-edit");
-    const hashEl = document.getElementById("iv-meta-hash");
-    const tsEl   = document.getElementById("iv-meta-ts");
+    // ── EXPLANATION ──
+    const expEl = document.getElementById("iv-explanation-text");
+    if (expEl) expEl.textContent = data.explanation || (data.reason || []).join(" ") || "Analysis complete.";
 
-    setBoolChip(exifEl, meta.has_exif, "Present", "Missing");
-    setBoolChip(gpsEl,  meta.has_gps,  "Present", "Not found");
-    camEl.textContent  = [meta.camera_make, meta.camera_model].filter(Boolean).join(" ") || "Unknown";
-    swEl.textContent   = meta.software || "None detected";
-    ganEl.textContent  = details.gan_probability != null
-      ? (details.gan_probability * 100).toFixed(1) + "%" : "—";
-    editEl.textContent = details.editing_probability != null
-      ? (details.editing_probability * 100).toFixed(1) + "%" : "—";
-    hashEl.textContent = (data.image_hash || currentHash || "—").substring(0, 32) + "…";
-    tsEl.textContent   = timestamp;
+    // ── MODEL BANNER ──
+    renderModelBanner(data.model_information || {});
 
-    // ── Show card ──
-    resultCard.style.display = "block";
-    resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    // ── SHOW DASHBOARD ──
+    resultDashboard.style.display = "block";
+    resultDashboard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function setBoolChip(el, value, trueText, falseText) {
-    if (value) {
-      el.textContent = trueText;
-      el.className = "iv-meta-chip-val iv-chip-yes";
-    } else {
-      el.textContent = falseText;
-      el.className = "iv-meta-chip-val iv-chip-no";
+  /* ── Overall Card ── */
+  function renderOverallCard(overall) {
+    const status     = overall.status     || "UNCERTAIN";
+    const confidence = parseFloat(overall.confidence) || 0;
+
+    const card       = document.getElementById("iv-overall-card");
+    const iconEl     = document.getElementById("iv-overall-icon");
+    const labelEl    = document.getElementById("iv-overall-label");
+    const subEl      = document.getElementById("iv-overall-sub");
+
+    // Map status → styling
+    const STATUS_MAP = {
+      "AUTHENTIC":          { cls: "iv-overall-authentic",   labelCls: "iv-label-authentic",   icon: "✅", sub: "This image appears to be authentic and unmodified." },
+      "LIKELY AUTHENTIC":   { cls: "iv-overall-authentic",   labelCls: "iv-label-authentic",   icon: "✅", sub: "This image is likely authentic with minor or no modifications." },
+      "SUSPICIOUS":         { cls: "iv-overall-suspicious",  labelCls: "iv-label-suspicious",  icon: "⚠️", sub: "Suspicious patterns detected — treat with caution." },
+      "LIKELY MANIPULATED": { cls: "iv-overall-manipulated", labelCls: "iv-label-manipulated", icon: "🔴", sub: "This image shows strong signs of digital manipulation." },
+      "FAKE / DECEPTIVE":   { cls: "iv-overall-fake",        labelCls: "iv-label-fake",        icon: "🚨", sub: "Multiple strong indicators of deceptive or fabricated content." },
+      "AI-GENERATED":       { cls: "iv-overall-ai",          labelCls: "iv-label-ai",          icon: "🤖", sub: "This image was most likely created by an AI generation system." },
+      "UNCERTAIN":          { cls: "iv-overall-uncertain",   labelCls: "iv-label-uncertain",   icon: "❓", sub: "Insufficient evidence to make a determination." },
+    };
+
+    const mapping = STATUS_MAP[status] || STATUS_MAP["UNCERTAIN"];
+
+    // Remove all variant classes
+    card.className = "iv-overall-card";
+    card.classList.add(mapping.cls);
+
+    iconEl.textContent  = mapping.icon;
+    labelEl.textContent = status;
+    labelEl.className   = `iv-overall-label ${mapping.labelCls}`;
+    subEl.textContent   = `Confidence: ${confidence.toFixed(1)}% — ${mapping.sub}`;
+
+    drawGauge(gaugeCanvas, confidence, status);
+  }
+
+  /* ── Detection Card (AI / Manipulation) ── */
+  function renderDetectCard(opts) {
+    const { status, confidence, probability } = opts;
+
+    // Status element
+    const statusEl = document.getElementById(opts.statusEl);
+    if (statusEl) {
+      statusEl.textContent  = status;
+      statusEl.className    = "iv-detect-status " + statusClass(status);
     }
+
+    // Badge
+    const badgeEl = document.getElementById(opts.badgeEl);
+    if (badgeEl) {
+      badgeEl.textContent = status;
+      badgeEl.className   = "iv-detect-badge " + badgeClass(status);
+    }
+
+    // Confidence bar
+    animateMetricBar(opts.confBarEl, opts.confValEl, confidence, "iv-bar-gray");
+
+    // Probability bar
+    animateMetricBar(opts.probBarEl, opts.probValEl, probability, opts.barColor);
+
+    // Reason
+    const reasonEl = document.getElementById(opts.reasonEl);
+    if (reasonEl) reasonEl.textContent = opts.reason || "—";
+  }
+
+  function statusClass(status) {
+    if (status === "YES")       return "iv-status-yes";
+    if (status === "NO")        return "iv-status-no";
+    return "iv-status-uncertain";
+  }
+
+  function badgeClass(status) {
+    if (status === "YES")       return "iv-badge-yes";
+    if (status === "NO")        return "iv-badge-no";
+    return "iv-badge-uncertain";
+  }
+
+  /* ── Metadata Section ── */
+  function renderMetadata(meta, timestamp) {
+    setBoolChip("iv-meta-exif",    meta.available, "Available",     "Not Available");
+    setBoolChip("iv-meta-gps",     meta.has_gps,   "Present",       "Not found");
+    setTextChip("iv-meta-camera",  meta.camera     || "Unknown");
+    setTextChip("iv-meta-sw",      meta.software   || "None detected");
+    setBoolChip("iv-meta-editing", meta.editing_software_detected, "⚠️ Detected", "Not detected", true);
+    setBoolChip("iv-meta-aisoft",  meta.ai_software_detected,     "⚠️ Detected", "Not detected", true);
+    setTextChip("iv-meta-dt",      meta.datetime   || "—");
+    setTextChip("iv-meta-ts",      timestamp);
+  }
+
+  function setBoolChip(id, value, trueText, falseText, invertColors = false) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = value ? trueText : falseText;
+    if (invertColors) {
+      el.className = value ? "iv-meta-chip-val iv-chip-warn" : "iv-meta-chip-val iv-chip-yes";
+    } else {
+      el.className = value ? "iv-meta-chip-val iv-chip-yes" : "iv-meta-chip-val iv-chip-no";
+    }
+  }
+
+  function setTextChip(id, text) {
+    const el = document.getElementById(id);
+    if (el) { el.textContent = text; el.className = "iv-meta-chip-val"; }
+  }
+
+  /* ── Model Banner ── */
+  function renderModelBanner(modelInfo) {
+    const banner  = document.getElementById("iv-model-banner");
+    const tag     = document.getElementById("iv-model-tag");
+    const infoTxt = document.getElementById("iv-model-info-text");
+    if (!banner || !tag) return;
+
+    if (modelInfo.fallback_mode) {
+      tag.textContent = "Forensic Analysis Only";
+      tag.className   = "iv-model-tag fallback";
+      if (infoTxt) infoTxt.textContent = "Advanced AI model unavailable — result based on forensic signal analysis.";
+    } else {
+      tag.textContent = modelInfo.ai_detector || "HuggingFace CNN";
+      tag.className   = "iv-model-tag";
+      if (infoTxt) infoTxt.textContent = "AI classification model + forensic signals.";
+    }
+    banner.style.display = "flex";
   }
 
   /* ── Confidence Gauge (canvas arc) ── */
-  function drawGauge(canvas, value, prediction) {
+  function drawGauge(canvas, value, status) {
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    const w = canvas.width;
-    const h = canvas.height;
+    const w = canvas.width, h = canvas.height;
     ctx.clearRect(0, 0, w, h);
 
-    const cx = w / 2;
-    const cy = h - 8;
-    const r  = h - 16;
-    const startAngle = Math.PI;
-    const endAngle   = Math.PI * 2;
+    const cx = w / 2, cy = h - 8, r = h - 16;
+    const startAngle = Math.PI, endAngle = Math.PI * 2;
 
-    // Background arc
     ctx.beginPath();
     ctx.arc(cx, cy, r, startAngle, endAngle);
     ctx.lineWidth = 10;
@@ -468,14 +530,19 @@
     ctx.lineCap = "round";
     ctx.stroke();
 
-    // Value arc
     const normalized = Math.min(100, Math.max(0, value)) / 100;
     const fillEnd    = startAngle + normalized * Math.PI;
 
-    let color;
-    if (prediction === "Fake")       color = "#ef4444";
-    else if (prediction === "Suspicious") color = "#f59e0b";
-    else                             color = "#10b981";
+    const COLOR_MAP = {
+      "AUTHENTIC":          "#10b981",
+      "LIKELY AUTHENTIC":   "#34d399",
+      "SUSPICIOUS":         "#f59e0b",
+      "LIKELY MANIPULATED": "#ef4444",
+      "FAKE / DECEPTIVE":   "#dc2626",
+      "AI-GENERATED":       "#8b5cf6",
+      "UNCERTAIN":          "#6b7280",
+    };
+    const color = COLOR_MAP[status] || "#6b7280";
 
     ctx.beginPath();
     ctx.arc(cx, cy, r, startAngle, fillEnd);
@@ -484,7 +551,6 @@
     ctx.lineCap = "round";
     ctx.stroke();
 
-    // Label
     ctx.fillStyle = color;
     ctx.font = "bold 18px Inter, sans-serif";
     ctx.textAlign = "center";
@@ -492,8 +558,8 @@
     ctx.fillText(value.toFixed(1) + "%", cx, cy - 10);
   }
 
-  /* ── Animated score bars ── */
-  function animateBar(key, score, delay) {
+  /* ── Forensic Signal Bars ── */
+  function animateForensicBar(key, score, delay) {
     const barEl  = document.getElementById(`iv-bar-${key}`);
     const textEl = document.getElementById(`iv-score-${key}`);
     if (!barEl || !textEl) return;
@@ -503,26 +569,39 @@
     barEl.className   = "iv-signal-bar-fill";
 
     let colorClass;
-    if (value < 40)      colorClass = "iv-bar-low";
+    if (value < 35)      colorClass = "iv-bar-low";
     else if (value < 65) colorClass = "iv-bar-medium";
     else                 colorClass = "iv-bar-high";
 
     setTimeout(() => {
       barEl.classList.add(colorClass);
-      barEl.style.width = value + "%";
-      textEl.textContent = value.toFixed(0);
+      barEl.style.width  = Math.min(100, value) + "%";
+      textEl.textContent = value.toFixed(0) + "%";
     }, delay);
+  }
+
+  /* ── Detection Card Metric Bars ── */
+  function animateMetricBar(barId, valId, score, colorClass) {
+    const barEl  = document.getElementById(barId);
+    const valEl  = document.getElementById(valId);
+    if (!barEl || !valEl) return;
+
+    const value = parseFloat(score) || 0;
+    barEl.style.width = "0%";
+    barEl.className   = `iv-metric-bar ${colorClass}`;
+
+    setTimeout(() => {
+      barEl.style.width  = Math.min(100, value) + "%";
+      valEl.textContent  = value.toFixed(1) + "%";
+    }, 150);
   }
 
   /* ══════════════════════════════════════════════════════════════════
      HISTORY
   ══════════════════════════════════════════════════════════════════ */
   function loadHistory() {
-    try {
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+    catch { return []; }
   }
 
   function saveHistory(hist) {
@@ -531,16 +610,19 @@
 
   function addToHistory(data, filename, hash) {
     const hist = loadHistory();
+    const overallStatus = data.overall?.status || "UNCERTAIN";
+    const overallConf   = data.overall?.confidence || 0;
+
     const entry = {
       id:         Date.now(),
-      filename:   filename,
-      hash:       hash,
-      prediction: data.prediction,
-      confidence: data.confidence,
+      filename,
+      hash,
+      status:     overallStatus,
+      confidence: overallConf,
       timestamp:  data.timestamp || new Date().toISOString(),
-      thumbnail:  previewImg.src.startsWith("blob:") ? null : previewImg.src,
+      thumbnail:  null,
     };
-    // Store thumbnail as data URL (max ~100KB compressed)
+
     try {
       const thumbCanvas = document.createElement("canvas");
       thumbCanvas.width  = 64;
@@ -556,8 +638,7 @@
 
   function isDuplicate(hash) {
     if (!hash) return false;
-    const hist = loadHistory();
-    return hist.some((e) => e.hash === hash);
+    return loadHistory().some((e) => e.hash === hash);
   }
 
   function renderHistory() {
@@ -568,26 +649,31 @@
       return;
     }
     historyEmpty.style.display = "none";
+
+    const STATUS_CLASSES = {
+      "AUTHENTIC":          "iv-hv-authentic",
+      "LIKELY AUTHENTIC":   "iv-hv-authentic",
+      "SUSPICIOUS":         "iv-hv-suspicious",
+      "LIKELY MANIPULATED": "iv-hv-manipulated",
+      "FAKE / DECEPTIVE":   "iv-hv-fake",
+      "AI-GENERATED":       "iv-hv-ai",
+      "UNCERTAIN":          "iv-hv-uncertain",
+    };
+
     historyList.innerHTML = hist.map((e) => {
-      const vcClass  = e.prediction === "Fake"
-        ? "iv-hv-fake"
-        : e.prediction === "Suspicious"
-          ? "iv-hv-suspicious"
-          : "iv-hv-real";
-      const ts = e.timestamp ? new Date(e.timestamp).toLocaleString() : "—";
-      const thumb = e.thumbnail
-        ? `<img class="iv-history-thumb" src="${e.thumbnail}" alt="thumb">`
+      const vcCls  = STATUS_CLASSES[e.status] || "iv-hv-uncertain";
+      const ts     = e.timestamp ? new Date(e.timestamp).toLocaleString() : "—";
+      const thumb  = e.thumbnail
+        ? `<img class="iv-history-thumb" src="${e.thumbnail}" alt="thumbnail">`
         : `<div class="iv-history-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem">🖼️</div>`;
-      const hashShort = e.hash ? e.hash.substring(0, 12) + "…" : "—";
       return `
         <div class="iv-history-item glass">
           ${thumb}
           <div class="iv-history-info">
             <div class="iv-history-name">${escHtml(e.filename)}</div>
             <div class="iv-history-ts">${ts}</div>
-            <div class="iv-history-hash">${hashShort}</div>
           </div>
-          <span class="iv-history-verdict ${vcClass}">${e.prediction || "—"}</span>
+          <span class="iv-history-verdict ${vcCls}">${e.status || "—"}</span>
           <span class="iv-history-conf">${parseFloat(e.confidence || 0).toFixed(1)}%</span>
         </div>`;
     }).join("");
@@ -600,7 +686,7 @@
   }
 
   /* ══════════════════════════════════════════════════════════════════
-     PDF REPORT (via browser print)
+     PDF REPORT
   ══════════════════════════════════════════════════════════════════ */
   function downloadReport() {
     if (!lastResult) {
@@ -625,14 +711,12 @@
 
   function resetAll() {
     resetUpload();
-    resultCard.style.display = "none";
+    resultDashboard.style.display = "none";
     uploadZone.scrollIntoView({ behavior: "smooth" });
   }
 
   function resetSteps() {
-    document.querySelectorAll(".iv-step").forEach((s) => {
-      s.className = "iv-step";
-    });
+    document.querySelectorAll(".iv-step").forEach((s) => { s.className = "iv-step"; });
     loaderLabel.textContent = "Initializing forensic pipeline…";
   }
 
@@ -646,9 +730,7 @@
     if (el) { el.classList.remove("iv-step-active"); el.classList.add("iv-step-done"); }
   }
 
-  function sleep(ms) {
-    return new Promise((r) => setTimeout(r, ms));
-  }
+  function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
   function formatBytes(bytes) {
     if (bytes < 1024) return bytes + " B";
@@ -664,7 +746,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  /* ── Toast notifications ── */
   function showToast(msg, type = "info") {
     const colors = {
       info:  "linear-gradient(135deg,#a855f7,#06b6d4)",
@@ -680,12 +761,14 @@
       animation:iv-fadein 0.3s ease;max-width:90vw;text-align:center;`;
     toast.textContent = msg;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
+    setTimeout(() => toast.remove(), 4500);
   }
 
   /* ── Boot ── */
-  document.addEventListener("DOMContentLoaded", init);
-  // Also run immediately if DOM is already ready
-  if (document.readyState !== "loading") init();
+  if (document.readyState !== "loading") {
+    init();
+  } else {
+    document.addEventListener("DOMContentLoaded", init);
+  }
 
 })();

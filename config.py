@@ -10,6 +10,23 @@ load_dotenv()
 # Base directory of the project
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
+# ── Vercel Detection ─────────────────────────────────────────────────────────
+# Vercel sets the VERCEL environment variable automatically.
+# We also detect read-only filesystem by checking if /tmp is writable.
+IS_VERCEL = bool(os.getenv('VERCEL') or os.getenv('VERCEL_ENV'))
+
+
+def _get_upload_folder():
+    """
+    Return a writable temp directory for uploaded images.
+    On Vercel, the project root (/var/task) is read-only; only /tmp is writable.
+    Locally, we use the project's 'uploads/' folder.
+    """
+    if IS_VERCEL:
+        return '/tmp'
+    # Local: use project uploads/ directory (created at startup)
+    return os.path.join(BASE_DIR, 'uploads')
+
 
 class Config:
     """Application configuration loaded from .env with sensible defaults."""
@@ -18,11 +35,13 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'truthcheck-dev-secret-change-in-production')
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
-    # --- Database (SQLite for local, swap to PostgreSQL for production) ---
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        'DATABASE_URL',
-        f'sqlite:///{os.path.join(BASE_DIR, "instance", "truthcheck.db")}'
-    )
+    # --- Database ---
+    # Local: SQLite  |  Vercel production: set DATABASE_URL to a PostgreSQL URL
+    _raw_db_url = os.getenv('DATABASE_URL', '')
+    if _raw_db_url.startswith('postgres://'):
+        # SQLAlchemy 1.4+ requires 'postgresql://' not 'postgres://'
+        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _raw_db_url or f'sqlite:///{os.path.join(BASE_DIR, "instance", "truthcheck.db")}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # --- Groq AI API ---
@@ -33,22 +52,34 @@ class Config:
     GROQ_MAX_TOKENS = int(os.getenv('GROQ_MAX_TOKENS', '4096'))
 
     # --- File Uploads ---
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MB max upload size
+    # Always /tmp on Vercel; 'uploads/' directory locally
+    UPLOAD_FOLDER = _get_upload_folder()
+    # Hard limit 20 MB for image uploads (matches IMAGE_VERIFY_MAX_SIZE)
+    MAX_CONTENT_LENGTH = 20 * 1024 * 1024
     ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
     ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}
     ALLOWED_TEXT_EXTENSIONS = {'txt', 'pdf', 'doc', 'docx'}
 
     # --- AI Image Verification ---
-    IMAGE_VERIFY_MAX_SIZE = 20 * 1024 * 1024   # 20 MB hard limit for image uploads
-    # Weighted pipeline: weights must sum to 1.0
+    IMAGE_VERIFY_MAX_SIZE = 20 * 1024 * 1024   # 20 MB hard limit
+
+    # Weighted pipeline scores — weights must sum to 1.0
+    # Rationale:
+    #   ela (0.22)       → Strong direct evidence of re-compression / editing
+    #   noise (0.15)     → AI hallmark but also affected by compression
+    #   frequency (0.15) → GAN upsampling artifacts
+    #   jpeg (0.10)      → Compression block artifacts (JPEG only)
+    #   metadata (0.13)  → Supporting evidence; not definitive alone
+    #   copy_move (0.10) → Localized cloning evidence
+    #   groq_vision (0.15) → LLM reasoning weight (when available)
     IMAGE_VERIFY_WEIGHTS = {
-        'ela':          0.20,  # Error Level Analysis
-        'noise':        0.15,  # Noise Pattern Fingerprinting
-        'frequency':    0.15,  # FFT Frequency Domain
-        'jpeg':         0.10,  # JPEG Artifact Scoring
-        'metadata':     0.15,  # EXIF Metadata Analysis
-        'ai_detection': 0.25,  # HuggingFace CNN (if available)
+        'ela':          0.22,
+        'noise':        0.15,
+        'frequency':    0.15,
+        'jpeg':         0.10,
+        'metadata':     0.13,
+        'copy_move':    0.10,
+        'groq_vision':  0.15,
     }
 
     # --- Rate Limiting ---

@@ -1,41 +1,50 @@
 # ─── Core Flask Stack ────────────────────────────────────────────────────────
-flask
-groq
-python-dotenv
-requests
-flask-sqlalchemy
-flask-login
-flask-limiter
-werkzeug
+flask>=3.0.0
+groq>=0.9.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+flask-sqlalchemy>=3.1.0
+flask-login>=0.6.3
+flask-limiter>=3.5.0
+werkzeug>=3.0.0
+
+# ─── Database ────────────────────────────────────────────────────────────────
+# psycopg2-binary is only needed when DATABASE_URL points to PostgreSQL (Vercel production).
+# Comment out locally if you only use SQLite.
+psycopg2-binary>=2.9.9
 
 # ─── Content Extraction ──────────────────────────────────────────────────────
-youtube-transcript-api
-newspaper3k
-beautifulsoup4
-lxml
-
-# ─── Reporting ───────────────────────────────────────────────────────────────
-reportlab
+# newspaper3k requires libxml2 system libraries not available on Vercel.
+# Replaced with requests + beautifulsoup4 for basic URL parsing.
+beautifulsoup4>=4.12.0
+# lxml is optional — falls back to html.parser if unavailable
+# lxml>=5.0.0
 
 # ─── Image Processing ────────────────────────────────────────────────────────
-Pillow
-opencv-python-headless
+# Pillow: core image loading, EXIF, ELA — lightweight, pure Python wheels available
+Pillow>=10.0.0
+# numpy: forensic math (FFT, noise analysis, pixel diff) — pure Python wheels
+numpy>=1.26.0
+# piexif: granular EXIF read/write
+piexif>=1.1.3
+# NOTE: scipy REMOVED — replaced with numpy Laplacian kernel (no C deps needed)
+# NOTE: opencv-python-headless REMOVED — PIL handles all image ops in the pipeline
 
-# ─── AI Image Verification Pipeline (NEW) ────────────────────────────────────
-# Required for multi-signal forensic analysis
-numpy
-scipy
-piexif
+# ─── AI / ML (OPTIONAL — disabled by default for Vercel) ─────────────────────
+# The HuggingFace CNN detector requires ~250MB download and torch.
+# These are NOT included in the Vercel build — the pipeline runs forensic-only.
+# Uncomment locally if you want the CNN detector:
+# transformers>=4.40.0
+# torch>=2.2.0
 
-# Optional: HuggingFace CNN-based AI image detection
-# Uncomment below to enable the AI-image-detector model (~250 MB download on first run).
-# Without these, the feature works using forensic signals only.
-# transformers
-# torch
+# ─── Reporting ───────────────────────────────────────────────────────────────
+# reportlab is only needed if PDF generation is used server-side.
+# The current implementation uses window.print() for PDF — no server-side PDF needed.
+# reportlab>=4.0.0
 
 # ─── Utilities ───────────────────────────────────────────────────────────────
-langdetect
-waitress
+langdetect>=1.0.9
+waitress>=3.0.0
 
-# ─── Multilingual ────────────────────────────────────────────────────────────
-langdetect
+# ─── YouTube Transcript ──────────────────────────────────────────────────────
+youtube-transcript-api>=0.6.2

@@ -11,12 +11,15 @@ separate Flask Blueprints for clean separation of concerns.
 from flask import Flask, request, jsonify, render_template
 import os
 import json
+import logging
 from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 
 # Load environment variables
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # ─── Application Factory ───────────────────────────────────────────────────────
 
@@ -28,24 +31,34 @@ def create_app():
     app = Flask(__name__)
 
     # ── Load Configuration ──
-    from config import Config
+    from config import Config, IS_VERCEL
     app.config.from_object(Config)
 
-    # Ensure required directories exist
-    os.makedirs(app.config.get('UPLOAD_FOLDER', 'uploads'), exist_ok=True)
-    os.makedirs(os.path.join(app.instance_path), exist_ok=True)
+    # Ensure upload directory exists locally (skipped on Vercel — /tmp always exists)
+    if not IS_VERCEL:
+        upload_folder = app.config.get('UPLOAD_FOLDER', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+        # Ensure instance folder for SQLite exists locally
+        os.makedirs(os.path.join(app.instance_path), exist_ok=True)
 
     # ── Initialize Extensions ──
     from extensions import db, login_manager
     db.init_app(app)
     login_manager.init_app(app)
 
-    # ── Create Database Tables ──
+    # ── Create Database Tables (Vercel-safe) ──
+    # On Vercel without a DATABASE_URL, SQLAlchemy can't create tables.
+    # We guard this with a try/except so the app still boots for static routes.
     with app.app_context():
-        # Import models so SQLAlchemy knows about them
-        from models.user import User
-        from models.report import Report
-        db.create_all()
+        try:
+            from models.user import User
+            from models.report import Report
+            db.create_all()
+            logger.info("Database tables verified/created.")
+        except Exception as db_init_err:
+            logger.warning(
+                f"Database init skipped (non-critical on Vercel without DB): {db_init_err}"
+            )
 
     # ── Register Blueprints (all new modular routes) ──
     from routes import register_blueprints
@@ -75,7 +88,8 @@ def create_app():
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
-            'groq_active': client is not None
+            'groq_active': client is not None,
+            'is_vercel': IS_VERCEL,
         })
 
     @app.route('/predict', methods=['POST'])
@@ -99,6 +113,7 @@ def create_app():
                     'timestamp': datetime.now().isoformat()
                 }
                 try:
+                    from extensions import db
                     from models.report import Report
                     report = Report(
                         input_type='text',
@@ -112,7 +127,7 @@ def create_app():
                     db.session.commit()
                     response_data['report_id'] = report.id
                 except Exception as db_err:
-                    print(f"DB save warning (non-critical): {db_err}")
+                    logger.warning(f"DB save warning (non-critical): {db_err}")
 
                 return jsonify(response_data)
 
@@ -163,7 +178,7 @@ def predict_with_groq(text):
 
         return json.loads(response.choices[0].message.content)
     except Exception as e:
-        print(f"Groq API Error: {e}")
+        logger.error(f"Groq API Error: {e}")
         return None
 
 
@@ -187,7 +202,8 @@ if __name__ == '__main__':
     print("|  Dashboard:  http://localhost:5000                           |")
     print("|  Landing:    http://localhost:5000/landing                   |")
     print("|  API Health: http://localhost:5000/health                    |")
-    print("|  API Docs:   POST /predict, /api/analyze, /api/youtube/...   |")
+    print("|  Image:      http://localhost:5000/image-detect              |")
+    print("|  API Docs:   POST /predict, /api/analyze, /api/verify-image  |")
     print("+" + "-"*62 + "+\n")
 
     app.run(debug=True, host='localhost', port=5000)

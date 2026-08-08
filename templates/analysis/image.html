@@ -3,11 +3,12 @@
 
 {% block extra_css %}
 <style>
-/* ═══════════════════════════════════════════════
-   AI IMAGE VERIFICATION — Page Styles
+/* ═══════════════════════════════════════════════════════════
+   AI IMAGE VERIFICATION — Complete Dashboard Styles
    All classes prefixed with .iv- to avoid conflicts
-═══════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════════ */
 
+/* ── Page Header ── */
 .iv-page-header {
   text-align: center;
   padding: 2rem 0 1.5rem;
@@ -153,31 +154,14 @@
   justify-content: space-between;
   padding: 1rem 1.4rem;
   border-bottom: 1px solid var(--border-glass);
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
-.iv-preview-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-.iv-preview-filename {
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: var(--text-main);
-}
-.iv-preview-size {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-.iv-preview-hash {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  font-family: monospace;
-  word-break: break-all;
-}
-.iv-preview-controls {
-  display: flex;
-  gap: 0.6rem;
-}
+.iv-preview-meta { display: flex; flex-direction: column; gap: 0.2rem; }
+.iv-preview-filename { font-weight: 600; font-size: 0.95rem; color: var(--text-main); }
+.iv-preview-size    { font-size: 0.78rem; color: var(--text-muted); }
+.iv-preview-controls { display: flex; gap: 0.6rem; }
+
 .iv-btn-remove {
   background: rgba(239,68,68,0.15);
   border: 1px solid rgba(239,68,68,0.3);
@@ -208,10 +192,8 @@
   transform: translateY(-2px);
   box-shadow: 0 6px 24px rgba(168,85,247,0.4);
 }
-.iv-btn-verify:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.iv-btn-verify:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .iv-preview-body {
   display: flex;
   align-items: flex-start;
@@ -267,13 +249,8 @@
   border-radius: 50%;
   animation: iv-spin 0.9s linear infinite;
 }
-@keyframes iv-spin {
-  to { transform: rotate(360deg); }
-}
-.iv-loader-label {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
+@keyframes iv-spin { to { transform: rotate(360deg); } }
+.iv-loader-label { color: var(--text-muted); font-size: 0.9rem; }
 .iv-progress-bar-wrap {
   width: 100%;
   max-width: 300px;
@@ -287,7 +264,6 @@
   width: 0%;
   background: linear-gradient(90deg, #a855f7, #06b6d4);
   border-radius: 99px;
-  transition: width 0.4s ease;
   animation: iv-progress-anim 2s ease-in-out infinite;
 }
 @keyframes iv-progress-anim {
@@ -321,57 +297,72 @@
   color: #6ee7b7;
 }
 
-/* ── Result Card ── */
-.iv-result-card {
+/* ══════════════════════════════════════════════════════════
+   RESULT DASHBOARD
+══════════════════════════════════════════════════════════ */
+
+.iv-result-dashboard {
   display: none;
-  border-radius: 20px;
-  overflow: hidden;
+  margin-top: 2rem;
   animation: iv-fadein 0.5s ease;
-  margin-top: 1.5rem;
 }
-.iv-result-header {
-  padding: 1.5rem 2rem;
+
+/* ── Dashboard Header Title ── */
+.iv-dashboard-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+/* ── Overall Result Card ── */
+.iv-overall-card {
+  border-radius: 20px;
+  padding: 1.8rem 2rem;
+  margin-bottom: 1.5rem;
   display: flex;
   align-items: center;
   gap: 1.5rem;
   flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
 }
-.iv-verdict-icon {
-  font-size: 3rem;
-  line-height: 1;
+.iv-overall-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  opacity: 0.08;
+  z-index: 0;
 }
-.iv-verdict-text {
-  flex: 1;
-}
-.iv-verdict-label {
-  font-size: 1.5rem;
+/* Overall status variants */
+.iv-overall-authentic  { background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(5,150,105,0.12)); border: 1px solid rgba(16,185,129,0.4); }
+.iv-overall-suspicious { background: linear-gradient(135deg, rgba(245,158,11,0.2), rgba(217,119,6,0.12)); border: 1px solid rgba(245,158,11,0.4); }
+.iv-overall-manipulated{ background: linear-gradient(135deg, rgba(239,68,68,0.2), rgba(220,38,38,0.12)); border: 1px solid rgba(239,68,68,0.4); }
+.iv-overall-ai         { background: linear-gradient(135deg, rgba(139,92,246,0.22), rgba(99,102,241,0.14)); border: 1px solid rgba(139,92,246,0.45); }
+.iv-overall-fake       { background: linear-gradient(135deg, rgba(239,68,68,0.25), rgba(220,38,38,0.18)); border: 1px solid rgba(239,68,68,0.5); }
+.iv-overall-uncertain  { background: linear-gradient(135deg, rgba(107,114,128,0.2), rgba(75,85,99,0.12)); border: 1px solid rgba(107,114,128,0.35); }
+
+.iv-overall-icon    { font-size: 2.8rem; line-height: 1; flex-shrink: 0; }
+.iv-overall-text    { flex: 1; }
+.iv-overall-label   {
+  font-size: 1.4rem;
   font-weight: 800;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
-.iv-verdict-sub {
-  font-size: 0.85rem;
-  opacity: 0.75;
-  margin-top: 0.2rem;
-}
-/* Color states */
-.iv-state-real {
-  background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(5,150,105,0.1));
-  border: 1px solid rgba(16,185,129,0.35);
-}
-.iv-state-real .iv-verdict-label { color: #34d399; }
-.iv-state-suspicious {
-  background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(217,119,6,0.1));
-  border: 1px solid rgba(245,158,11,0.35);
-}
-.iv-state-suspicious .iv-verdict-label { color: #fbbf24; }
-.iv-state-fake {
-  background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(220,38,38,0.1));
-  border: 1px solid rgba(239,68,68,0.35);
-}
-.iv-state-fake .iv-verdict-label { color: #f87171; }
+.iv-overall-sub     { font-size: 0.85rem; opacity: 0.75; margin-top: 0.25rem; }
 
-/* ── Gauge ── */
+.iv-label-authentic  { color: #34d399; }
+.iv-label-suspicious { color: #fbbf24; }
+.iv-label-manipulated{ color: #f87171; }
+.iv-label-ai         { color: #a78bfa; }
+.iv-label-fake       { color: #f87171; }
+.iv-label-uncertain  { color: #9ca3af; }
+
+/* Confidence gauge area */
 .iv-gauge-wrap {
   display: flex;
   flex-direction: column;
@@ -379,50 +370,129 @@
   gap: 0.3rem;
   min-width: 120px;
 }
-#iv-gauge-canvas {
-  display: block;
-}
-.iv-gauge-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-align: center;
+#iv-gauge-canvas { display: block; }
+.iv-gauge-label { font-size: 0.75rem; color: var(--text-muted); text-align: center; }
+
+/* ── Three-Part Section Grid ── */
+.iv-three-part {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
 
-/* ── Result Body ── */
-.iv-result-body {
-  padding: 1.5rem 2rem;
-  border-top: 1px solid var(--border-glass);
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+/* ── Individual Detection Cards ── */
+.iv-detect-card {
+  border-radius: 16px;
+  padding: 1.4rem 1.6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(16px);
 }
-.iv-reason-box {
-  background: rgba(255,255,255,0.04);
-  border-left: 3px solid #a855f7;
-  border-radius: 0 12px 12px 0;
-  padding: 1rem 1.2rem;
-}
-.iv-reason-title {
-  font-size: 0.75rem;
+.iv-detect-card-title {
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: #a78bfa;
-  margin-bottom: 0.4rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
-.iv-reason-text {
-  font-size: 0.92rem;
-  line-height: 1.6;
+.iv-detect-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+.iv-detect-status {
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.iv-status-yes     { color: #f87171; }
+.iv-status-no      { color: #34d399; }
+.iv-status-uncertain { color: #9ca3af; }
+
+.iv-detect-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.65rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.iv-badge-yes       { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+.iv-badge-no        { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+.iv-badge-uncertain { background: rgba(107,114,128,0.15); color: #9ca3af; border: 1px solid rgba(107,114,128,0.3); }
+
+/* Confidence/Probability rows */
+.iv-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.iv-metric-name {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  width: 90px;
+  flex-shrink: 0;
+}
+.iv-metric-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.iv-metric-bar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.9s cubic-bezier(.25,.8,.25,1);
+  width: 0%;
+}
+.iv-metric-val {
+  font-size: 0.78rem;
+  font-weight: 700;
+  width: 36px;
+  text-align: right;
   color: var(--text-main);
 }
-
-/* ── Signal Breakdown ── */
-.iv-signals-title {
-  font-size: 0.85rem;
-  font-weight: 600;
+.iv-detect-reason {
+  font-size: 0.8rem;
+  line-height: 1.5;
   color: var(--text-muted);
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--border-glass);
+}
+
+/* Bar color utilities */
+.iv-bar-green  { background: linear-gradient(90deg, #10b981, #34d399); }
+.iv-bar-yellow { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.iv-bar-red    { background: linear-gradient(90deg, #ef4444, #f87171); }
+.iv-bar-purple { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+.iv-bar-gray   { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+
+/* ── Forensic Analysis Section ── */
+.iv-section {
+  border-radius: 16px;
+  padding: 1.4rem 1.6rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(16px);
+  margin-bottom: 1rem;
+}
+.iv-section-title {
+  font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  margin-bottom: 0.8rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 .iv-signal-row {
   display: flex;
@@ -431,7 +501,7 @@
   margin-bottom: 0.7rem;
 }
 .iv-signal-name {
-  width: 160px;
+  width: 175px;
   font-size: 0.82rem;
   color: var(--text-muted);
   flex-shrink: 0;
@@ -439,29 +509,28 @@
 .iv-signal-bar-wrap {
   flex: 1;
   height: 8px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.07);
   border-radius: 99px;
   overflow: hidden;
 }
 .iv-signal-bar-fill {
   height: 100%;
   border-radius: 99px;
-  transition: width 0.8s cubic-bezier(.25,.8,.25,1);
+  transition: width 0.9s cubic-bezier(.25,.8,.25,1);
   width: 0%;
 }
 .iv-signal-score {
-  width: 40px;
+  width: 44px;
   text-align: right;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
-/* Bar colors by level */
 .iv-bar-low    { background: linear-gradient(90deg, #10b981, #34d399); }
 .iv-bar-medium { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .iv-bar-high   { background: linear-gradient(90deg, #ef4444, #f87171); }
 
-/* ── Metadata Grid ── */
+/* ── Metadata Section ── */
 .iv-meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -471,32 +540,82 @@
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--border-glass);
   border-radius: 10px;
-  padding: 0.6rem 0.9rem;
+  padding: 0.65rem 0.9rem;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.25rem;
 }
 .iv-meta-chip-label {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 .iv-meta-chip-val {
-  font-size: 0.85rem;
+  font-size: 0.86rem;
   font-weight: 600;
   color: var(--text-main);
 }
 .iv-chip-yes { color: #34d399; }
 .iv-chip-no  { color: #f87171; }
+.iv-chip-warn { color: #fbbf24; }
 
-/* ── Result Actions ── */
+/* ── Explanation Section ── */
+.iv-explanation-box {
+  background: rgba(168,85,247,0.07);
+  border-left: 3px solid #a855f7;
+  border-radius: 0 14px 14px 0;
+  padding: 1.1rem 1.3rem;
+  margin-bottom: 1rem;
+}
+.iv-explanation-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #a78bfa;
+  margin-bottom: 0.5rem;
+}
+.iv-explanation-text {
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text-main);
+}
+
+/* ── Model Info Banner ── */
+.iv-model-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-glass);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.iv-model-tag {
+  padding: 0.15rem 0.55rem;
+  border-radius: 99px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(168,85,247,0.15);
+  color: #c4b5fd;
+  border: 1px solid rgba(168,85,247,0.3);
+}
+.iv-model-tag.fallback {
+  background: rgba(245,158,11,0.15);
+  color: #fbbf24;
+  border-color: rgba(245,158,11,0.3);
+}
+
+/* ── Action Bar ── */
 .iv-result-actions {
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
-  padding: 1rem 2rem 1.5rem;
-  border-top: 1px solid var(--border-glass);
+  padding: 1.2rem 0 0;
 }
 .iv-btn-report {
   background: linear-gradient(135deg, #a855f7, #06b6d4);
@@ -533,20 +652,14 @@
 .iv-btn-new:hover { background: rgba(255,255,255,0.14); }
 
 /* ── History Section ── */
-.iv-history-section {
-  margin-top: 2.5rem;
-}
+.iv-history-section { margin-top: 2.5rem; }
 .iv-history-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
 }
-.iv-history-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
+.iv-history-title { font-size: 1rem; font-weight: 700; color: var(--text-main); }
 .iv-btn-clear-history {
   background: none;
   border: 1px solid var(--border-glass);
@@ -566,11 +679,7 @@
   border: 1px dashed var(--border-glass);
   border-radius: 16px;
 }
-.iv-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-}
+.iv-history-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .iv-history-item {
   display: flex;
   align-items: center;
@@ -600,44 +709,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.iv-history-ts {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-.iv-history-hash {
-  font-size: 0.65rem;
-  color: var(--text-muted);
-  font-family: monospace;
-}
+.iv-history-ts   { font-size: 0.75rem; color: var(--text-muted); }
 .iv-history-verdict {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  padding: 0.3rem 0.8rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 99px;
   white-space: nowrap;
 }
-.iv-hv-real { background: rgba(16,185,129,0.15); color: #34d399; }
-.iv-hv-suspicious { background: rgba(245,158,11,0.15); color: #fbbf24; }
-.iv-hv-fake { background: rgba(239,68,68,0.15); color: #f87171; }
-.iv-history-conf {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  width: 48px;
-  text-align: right;
-}
-
-/* Duplicate warning */
-.iv-duplicate-warn {
-  display: none;
-  background: rgba(245,158,11,0.12);
-  border: 1px solid rgba(245,158,11,0.35);
-  border-radius: 12px;
-  padding: 0.75rem 1.2rem;
-  font-size: 0.88rem;
-  color: #fbbf24;
-  margin-bottom: 1rem;
-  animation: iv-fadein 0.3s ease;
-}
+.iv-hv-authentic   { background: rgba(16,185,129,0.15); color: #34d399; }
+.iv-hv-suspicious  { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.iv-hv-manipulated { background: rgba(239,68,68,0.15); color: #f87171; }
+.iv-hv-ai          { background: rgba(139,92,246,0.15); color: #a78bfa; }
+.iv-hv-fake        { background: rgba(239,68,68,0.18); color: #f87171; }
+.iv-hv-uncertain   { background: rgba(107,114,128,0.15); color: #9ca3af; }
+.iv-history-conf   { font-size: 0.8rem; color: var(--text-muted); width: 48px; text-align: right; }
 
 /* Clipboard paste hint */
 .iv-paste-hint {
@@ -656,26 +742,35 @@
   pointer-events: none;
 }
 
-/* Print styles for PDF report */
+/* Duplicate warning */
+.iv-duplicate-warn {
+  display: none;
+  background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 12px;
+  padding: 0.75rem 1.2rem;
+  font-size: 0.88rem;
+  color: #fbbf24;
+  margin-bottom: 1rem;
+  animation: iv-fadein 0.3s ease;
+}
+
+/* Print styles */
 @media print {
-  .navbar, .chat-widget, .iv-upload-zone, .iv-preview-panel .iv-preview-controls,
+  .navbar, .chat-widget, .iv-upload-zone, .iv-preview-controls,
   .iv-result-actions, .iv-history-section, canvas#particles-canvas,
-  .iv-btn-report, .iv-btn-new, .iv-btn-remove, .iv-btn-verify,
-  .theme-toggle-btn, .lang-selector {
-    display: none !important;
-  }
-  .iv-result-card { display: block !important; border: 1px solid #ccc; }
+  .iv-btn-report, .iv-btn-new, .iv-btn-remove, .iv-btn-verify { display: none !important; }
+  .iv-result-dashboard { display: block !important; }
   body { background: #fff !important; color: #000 !important; }
-  .iv-result-header { background: #f3f4f6 !important; }
-  .iv-verdict-label { -webkit-text-fill-color: inherit !important; color: inherit !important; }
 }
 
 /* Mobile responsive */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .iv-three-part { grid-template-columns: 1fr; }
   .iv-preview-body { flex-direction: column; }
   .iv-preview-img-wrap { max-width: 100%; width: 100%; height: 180px; }
-  .iv-result-header { flex-direction: column; align-items: flex-start; }
-  .iv-signal-name { width: 120px; }
+  .iv-overall-card { flex-direction: column; align-items: flex-start; }
+  .iv-signal-name { width: 130px; }
 }
 </style>
 {% endblock %}
@@ -683,7 +778,7 @@
 {% block content %}
 <div class="iv-page-header">
   <h1>🔍 AI Image Verification</h1>
-  <p>Upload any image — we run 6 forensic signals to detect AI generation, deepfakes, and manipulation.</p>
+  <p>Upload any image — our forensic pipeline separately detects AI generation, manipulation, and assesses overall authenticity.</p>
 </div>
 
 <div id="iv-duplicate-warn" class="iv-duplicate-warn">
@@ -695,7 +790,7 @@
      aria-label="Image upload area — click, drag, or paste an image">
   <input type="file" id="iv-file-input" accept=".jpg,.jpeg,.png,.webp" aria-label="Select image file">
   <span class="iv-upload-icon">🖼️</span>
-  <div class="iv-upload-title">Drop image here, paste from clipboard, or click to browse</div>
+  <div class="iv-upload-title">Drop image here, paste from clipboard (Ctrl+V), or click to browse</div>
   <div class="iv-upload-subtitle">Supports JPG, JPEG, PNG, WEBP · Maximum 20 MB</div>
   <div class="iv-upload-badges">
     <span class="iv-badge-fmt">JPG</span>
@@ -705,15 +800,9 @@
     <span class="iv-badge-fmt">Max 20 MB</span>
   </div>
   <div class="iv-upload-actions">
-    <button class="iv-btn-upload" id="iv-btn-browse" type="button">
-      📁 Browse Files
-    </button>
-    <button class="iv-btn-paste" id="iv-btn-paste" type="button">
-      📋 Paste Image (Ctrl+V)
-    </button>
-    <button class="iv-btn-screenshot" id="iv-btn-screenshot" type="button">
-      📸 Screenshot
-    </button>
+    <button class="iv-btn-upload" id="iv-btn-browse" type="button">📁 Browse Files</button>
+    <button class="iv-btn-paste" id="iv-btn-paste" type="button">📋 Paste Image (Ctrl+V)</button>
+    <button class="iv-btn-screenshot" id="iv-btn-screenshot" type="button">📸 Screenshot</button>
   </div>
   <div class="iv-hint">💡 You can also drag an image from another browser tab or window</div>
 </div>
@@ -724,7 +813,6 @@
     <div class="iv-preview-meta">
       <div class="iv-preview-filename" id="iv-preview-filename">image.jpg</div>
       <div class="iv-preview-size" id="iv-preview-size">—</div>
-      <div class="iv-preview-hash" id="iv-preview-hash-display"></div>
     </div>
     <div class="iv-preview-controls">
       <button class="iv-btn-remove" id="iv-btn-remove" type="button">✕ Remove</button>
@@ -736,7 +824,7 @@
   </div>
   <div class="iv-preview-body">
     <div class="iv-preview-img-wrap">
-      <img id="iv-preview-img" src="" alt="Preview">
+      <img id="iv-preview-img" src="" alt="Image preview">
     </div>
     <div class="iv-preview-info">
       <div class="iv-info-label">SHA-256 Hash</div>
@@ -748,7 +836,7 @@
     </div>
   </div>
 
-  <!-- Loader (shown during analysis) -->
+  <!-- Loader -->
   <div id="iv-loader" class="iv-loader">
     <div class="iv-loader-ring"></div>
     <div class="iv-loader-label" id="iv-loader-label">Initializing forensic pipeline…</div>
@@ -758,122 +846,167 @@
     <div class="iv-steps" id="iv-steps">
       <span class="iv-step" data-step="ela">ELA Analysis</span>
       <span class="iv-step" data-step="noise">Noise Pattern</span>
-      <span class="iv-step" data-step="freq">Frequency</span>
+      <span class="iv-step" data-step="freq">Frequency FFT</span>
       <span class="iv-step" data-step="jpeg">JPEG Artifacts</span>
-      <span class="iv-step" data-step="meta">Metadata</span>
+      <span class="iv-step" data-step="meta">EXIF Metadata</span>
+      <span class="iv-step" data-step="copymove">Copy-Move</span>
       <span class="iv-step" data-step="ai">AI Detection</span>
     </div>
   </div>
 </div>
 
-<!-- ── Result Card ── -->
-<div id="iv-result-card" class="iv-result-card glass">
-  <!-- Header: verdict + gauge -->
-  <div class="iv-result-header" id="iv-result-header">
-    <div class="iv-verdict-icon" id="iv-verdict-icon">—</div>
-    <div class="iv-verdict-text">
-      <div class="iv-verdict-label" id="iv-verdict-label">—</div>
-      <div class="iv-verdict-sub" id="iv-verdict-sub">—</div>
+<!-- ══════════════════════════════════════════════════════
+     RESULT DASHBOARD (3-Part)
+══════════════════════════════════════════════════════ -->
+<div id="iv-result-dashboard" class="iv-result-dashboard">
+
+  <div class="iv-dashboard-title">🛡️ IMAGE VERIFICATION RESULT</div>
+
+  <!-- OVERALL RESULT -->
+  <div id="iv-overall-card" class="iv-overall-card iv-overall-uncertain">
+    <div class="iv-overall-icon" id="iv-overall-icon">⏳</div>
+    <div class="iv-overall-text">
+      <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:0.3rem;">Overall Result</div>
+      <div class="iv-overall-label" id="iv-overall-label">—</div>
+      <div class="iv-overall-sub" id="iv-overall-sub">—</div>
     </div>
     <div class="iv-gauge-wrap">
-      <canvas id="iv-gauge-canvas" width="120" height="70" aria-label="Confidence gauge"></canvas>
-      <div class="iv-gauge-label">Confidence Score</div>
+      <canvas id="iv-gauge-canvas" width="120" height="70" aria-label="Overall confidence gauge"></canvas>
+      <div class="iv-gauge-label">Confidence</div>
     </div>
   </div>
 
-  <!-- Body: reason + signals + metadata -->
-  <div class="iv-result-body">
-    <!-- Reason -->
-    <div class="iv-reason-box">
-      <div class="iv-reason-title">🧠 Forensic Analysis</div>
-      <div class="iv-reason-text" id="iv-reason-text">—</div>
-    </div>
+  <!-- TWO DETECTION CARDS -->
+  <div class="iv-three-part">
 
-    <!-- Signal Breakdown -->
-    <div>
-      <div class="iv-signals-title">Signal Breakdown (Suspicious Score per Channel)</div>
-      <div id="iv-signals-list">
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">ELA (Editing)</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-ela"></div></div>
-          <div class="iv-signal-score" id="iv-score-ela">—</div>
-        </div>
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">Noise Pattern</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-noise"></div></div>
-          <div class="iv-signal-score" id="iv-score-noise">—</div>
-        </div>
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">Frequency Domain</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-freq"></div></div>
-          <div class="iv-signal-score" id="iv-score-freq">—</div>
-        </div>
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">JPEG Artifacts</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-jpeg"></div></div>
-          <div class="iv-signal-score" id="iv-score-jpeg">—</div>
-        </div>
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">Metadata</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-meta"></div></div>
-          <div class="iv-signal-score" id="iv-score-meta">—</div>
-        </div>
-        <div class="iv-signal-row">
-          <div class="iv-signal-name">AI Detection CNN</div>
-          <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-ai"></div></div>
-          <div class="iv-signal-score" id="iv-score-ai">—</div>
-        </div>
+    <!-- A: AI-Generated Detection -->
+    <div class="iv-detect-card" id="iv-ai-card">
+      <div class="iv-detect-card-title">🤖 AI-Generated Detection</div>
+      <div class="iv-detect-status-row">
+        <div class="iv-detect-status iv-status-uncertain" id="iv-ai-status">—</div>
+        <span class="iv-detect-badge iv-badge-uncertain" id="iv-ai-badge">UNCERTAIN</span>
       </div>
+      <div class="iv-metric-row">
+        <div class="iv-metric-name">Confidence</div>
+        <div class="iv-metric-bar-wrap"><div class="iv-metric-bar iv-bar-gray" id="iv-ai-conf-bar"></div></div>
+        <div class="iv-metric-val" id="iv-ai-conf-val">—</div>
+      </div>
+      <div class="iv-metric-row">
+        <div class="iv-metric-name">AI Probability</div>
+        <div class="iv-metric-bar-wrap"><div class="iv-metric-bar iv-bar-purple" id="iv-ai-prob-bar"></div></div>
+        <div class="iv-metric-val" id="iv-ai-prob-val">—</div>
+      </div>
+      <div class="iv-detect-reason" id="iv-ai-reason">—</div>
     </div>
 
-    <!-- Metadata chips -->
-    <div>
-      <div class="iv-signals-title">Image Metadata</div>
-      <div class="iv-meta-grid" id="iv-meta-grid">
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">EXIF Data</span>
-          <span class="iv-meta-chip-val" id="iv-meta-exif">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">GPS Location</span>
-          <span class="iv-meta-chip-val" id="iv-meta-gps">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">Camera</span>
-          <span class="iv-meta-chip-val" id="iv-meta-camera">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">Software</span>
-          <span class="iv-meta-chip-val" id="iv-meta-sw">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">GAN Probability</span>
-          <span class="iv-meta-chip-val" id="iv-meta-gan">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">Edit Probability</span>
-          <span class="iv-meta-chip-val" id="iv-meta-edit">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">Image Hash</span>
-          <span class="iv-meta-chip-val" id="iv-meta-hash" style="font-size:0.65rem;font-family:monospace;word-break:break-all;">—</span>
-        </div>
-        <div class="iv-meta-chip">
-          <span class="iv-meta-chip-label">Analyzed At</span>
-          <span class="iv-meta-chip-val" id="iv-meta-ts">—</span>
-        </div>
+    <!-- B: Manipulation Detection -->
+    <div class="iv-detect-card" id="iv-manip-card">
+      <div class="iv-detect-card-title">✂️ Image Manipulation Detection</div>
+      <div class="iv-detect-status-row">
+        <div class="iv-detect-status iv-status-uncertain" id="iv-manip-status">—</div>
+        <span class="iv-detect-badge iv-badge-uncertain" id="iv-manip-badge">UNCERTAIN</span>
+      </div>
+      <div class="iv-metric-row">
+        <div class="iv-metric-name">Confidence</div>
+        <div class="iv-metric-bar-wrap"><div class="iv-metric-bar iv-bar-gray" id="iv-manip-conf-bar"></div></div>
+        <div class="iv-metric-val" id="iv-manip-conf-val">—</div>
+      </div>
+      <div class="iv-metric-row">
+        <div class="iv-metric-name">Edit Probability</div>
+        <div class="iv-metric-bar-wrap"><div class="iv-metric-bar iv-bar-red" id="iv-manip-prob-bar"></div></div>
+        <div class="iv-metric-val" id="iv-manip-prob-val">—</div>
+      </div>
+      <div class="iv-detect-reason" id="iv-manip-reason">—</div>
+    </div>
+
+  </div>
+
+  <!-- FORENSIC ANALYSIS -->
+  <div class="iv-section" id="iv-forensics-section">
+    <div class="iv-section-title">🔬 Forensic Analysis Pipeline</div>
+    <div class="iv-signal-row">
+      <div class="iv-signal-name">ELA (Error Level Analysis)</div>
+      <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-ela"></div></div>
+      <div class="iv-signal-score" id="iv-score-ela">—</div>
+    </div>
+    <div class="iv-signal-row">
+      <div class="iv-signal-name">Noise Analysis</div>
+      <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-noise"></div></div>
+      <div class="iv-signal-score" id="iv-score-noise">—</div>
+    </div>
+    <div class="iv-signal-row">
+      <div class="iv-signal-name">Frequency Domain (FFT)</div>
+      <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-freq"></div></div>
+      <div class="iv-signal-score" id="iv-score-freq">—</div>
+    </div>
+    <div class="iv-signal-row">
+      <div class="iv-signal-name">Splicing Probability</div>
+      <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-splice"></div></div>
+      <div class="iv-signal-score" id="iv-score-splice">—</div>
+    </div>
+    <div class="iv-signal-row">
+      <div class="iv-signal-name">Copy-Move Probability</div>
+      <div class="iv-signal-bar-wrap"><div class="iv-signal-bar-fill" id="iv-bar-copymove"></div></div>
+      <div class="iv-signal-score" id="iv-score-copymove">—</div>
+    </div>
+  </div>
+
+  <!-- METADATA ANALYSIS -->
+  <div class="iv-section" id="iv-meta-section">
+    <div class="iv-section-title">📊 Metadata Analysis</div>
+    <div class="iv-meta-grid">
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">EXIF Metadata</span>
+        <span class="iv-meta-chip-val" id="iv-meta-exif">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">GPS Location</span>
+        <span class="iv-meta-chip-val" id="iv-meta-gps">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">Camera Info</span>
+        <span class="iv-meta-chip-val" id="iv-meta-camera">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">Software</span>
+        <span class="iv-meta-chip-val" id="iv-meta-sw">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">Editing Software</span>
+        <span class="iv-meta-chip-val" id="iv-meta-editing">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">AI Software</span>
+        <span class="iv-meta-chip-val" id="iv-meta-aisoft">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">Captured At</span>
+        <span class="iv-meta-chip-val" id="iv-meta-dt">—</span>
+      </div>
+      <div class="iv-meta-chip">
+        <span class="iv-meta-chip-label">Analyzed At</span>
+        <span class="iv-meta-chip-val" id="iv-meta-ts">—</span>
       </div>
     </div>
   </div>
 
-  <!-- Action bar -->
+  <!-- FINAL EXPLANATION -->
+  <div class="iv-explanation-box">
+    <div class="iv-explanation-title">🧠 Final Explanation</div>
+    <div class="iv-explanation-text" id="iv-explanation-text">—</div>
+  </div>
+
+  <!-- MODEL INFO -->
+  <div class="iv-model-banner" id="iv-model-banner">
+    <span>Analysis method:</span>
+    <span class="iv-model-tag" id="iv-model-tag">Forensic Pipeline</span>
+    <span id="iv-model-info-text" style="color:var(--text-muted);font-size:0.75rem;"></span>
+  </div>
+
+  <!-- ACTIONS -->
   <div class="iv-result-actions">
-    <button class="iv-btn-report" id="iv-btn-download-report">
-      📄 Download PDF Report
-    </button>
-    <button class="iv-btn-new" id="iv-btn-new">
-      🔄 Verify Another Image
-    </button>
+    <button class="iv-btn-report" id="iv-btn-download-report" type="button">📄 Save PDF Report</button>
+    <button class="iv-btn-new" id="iv-btn-new" type="button">🔄 Verify Another Image</button>
   </div>
 </div>
 
@@ -881,7 +1014,7 @@
 <div class="iv-history-section">
   <div class="iv-history-header">
     <div class="iv-history-title">📋 Verification History</div>
-    <button class="iv-btn-clear-history" id="iv-btn-clear-history">Clear History</button>
+    <button class="iv-btn-clear-history" id="iv-btn-clear-history" type="button">Clear History</button>
   </div>
   <div id="iv-history-container">
     <div class="iv-history-empty" id="iv-history-empty">
@@ -890,9 +1023,6 @@
     <div class="iv-history-list" id="iv-history-list"></div>
   </div>
 </div>
-
-<!-- Hidden print report template -->
-<div id="iv-print-content" style="display:none;"></div>
 {% endblock %}
 
 {% block extra_js %}

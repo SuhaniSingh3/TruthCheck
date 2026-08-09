@@ -5,46 +5,40 @@ python-dotenv>=1.0.0
 requests>=2.31.0
 flask-sqlalchemy>=3.1.0
 flask-login>=0.6.3
-flask-limiter>=3.5.0
 werkzeug>=3.0.0
 
+# ─── Rate Limiting ────────────────────────────────────────────────────────────
+# flask-limiter uses in-memory storage (works on Vercel per-instance)
+flask-limiter>=3.5.0
+limits>=3.6.0
+ordered-set>=4.1.0
+
 # ─── Database ────────────────────────────────────────────────────────────────
-# psycopg2-binary is only needed when DATABASE_URL points to PostgreSQL (Vercel production).
-# Comment out locally if you only use SQLite.
+# psycopg2-binary: only active when DATABASE_URL is set (PostgreSQL on Vercel).
+# App boots safely without it — SQLite in-memory is used as fallback on Vercel.
 psycopg2-binary>=2.9.9
 
 # ─── Content Extraction ──────────────────────────────────────────────────────
-# newspaper3k requires libxml2 system libraries not available on Vercel.
-# Replaced with requests + beautifulsoup4 for basic URL parsing.
 beautifulsoup4>=4.12.0
-# lxml is optional — falls back to html.parser if unavailable
-# lxml>=5.0.0
 
 # ─── Image Processing ────────────────────────────────────────────────────────
-# Pillow: core image loading, EXIF, ELA — lightweight, pure Python wheels available
+# Pillow: core image loading, EXIF, ELA — pure-Python wheels available
 Pillow>=10.0.0
-# numpy: forensic math (FFT, noise analysis, pixel diff) — pure Python wheels
+# numpy: forensic math (FFT, noise analysis, pixel diff) — pure-Python wheels
 numpy>=1.26.0
 # piexif: granular EXIF read/write
 piexif>=1.1.3
-# NOTE: scipy REMOVED — replaced with numpy Laplacian kernel (no C deps needed)
-# NOTE: opencv-python-headless REMOVED — PIL handles all image ops in the pipeline
 
-# ─── AI / ML (OPTIONAL — disabled by default for Vercel) ─────────────────────
-# The HuggingFace CNN detector requires ~250MB download and torch.
-# These are NOT included in the Vercel build — the pipeline runs forensic-only.
-# Uncomment locally if you want the CNN detector:
+# ─── AI / ML (OPTIONAL — disabled on Vercel by IS_VERCEL flag) ───────────────
+# Uncomment locally only — too large for Vercel Lambda (>250 MB):
 # transformers>=4.40.0
 # torch>=2.2.0
 
-# ─── Reporting ───────────────────────────────────────────────────────────────
-# reportlab is only needed if PDF generation is used server-side.
-# The current implementation uses window.print() for PDF — no server-side PDF needed.
-# reportlab>=4.0.0
-
 # ─── Utilities ───────────────────────────────────────────────────────────────
 langdetect>=1.0.9
-waitress>=3.0.0
 
 # ─── YouTube Transcript ──────────────────────────────────────────────────────
 youtube-transcript-api>=0.6.2
+
+# NOTE: waitress removed — not needed on Vercel (uses @vercel/python WSGI adapter)
+# NOTE: reportlab removed — PDF export uses window.print() client-side

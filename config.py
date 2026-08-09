@@ -36,13 +36,31 @@ class Config:
     DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() in ('true', '1', 'yes')
 
     # --- Database ---
-    # Local: SQLite  |  Vercel production: set DATABASE_URL to a PostgreSQL URL
+    # LOCAL:  SQLite (auto-created in instance/ directory)
+    # VERCEL with DATABASE_URL: PostgreSQL (set DATABASE_URL env var in Vercel dashboard)
+    # VERCEL without DATABASE_URL: in-memory SQLite (DB features disabled, app still boots)
     _raw_db_url = os.getenv('DATABASE_URL', '')
     if _raw_db_url.startswith('postgres://'):
         # SQLAlchemy 1.4+ requires 'postgresql://' not 'postgres://'
         _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
-    SQLALCHEMY_DATABASE_URI = _raw_db_url or f'sqlite:///{os.path.join(BASE_DIR, "instance", "truthcheck.db")}'
+
+    if _raw_db_url:
+        # Explicit DATABASE_URL (PostgreSQL on Vercel, or custom local)
+        SQLALCHEMY_DATABASE_URI = _raw_db_url
+    elif IS_VERCEL:
+        # Vercel without DATABASE_URL — use in-memory SQLite so app boots.
+        # db.create_all() is suppressed in app.py for this case.
+        SQLALCHEMY_DATABASE_URI = 'sqlite://'   # ":memory:" — never writes to disk
+    else:
+        # Local development — persistent SQLite in instance/
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(BASE_DIR, "instance", "truthcheck.db")}'
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        # Prevent stale connections on serverless cold starts
+        'pool_pre_ping': True,
+        'pool_recycle': 280,
+    }
 
     # --- Groq AI API ---
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')

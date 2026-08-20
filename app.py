@@ -132,13 +132,25 @@ def create_app():
     # Blueprints own: /predict, /result, /landing, /image-detect, etc.
     # DO NOT register duplicate routes here.
     logger.info("Registering blueprints")
+    _bp_error = None
     try:
         from routes import register_blueprints
         register_blueprints(app)
         logger.info("All blueprints registered successfully")
     except Exception as bp_err:
         logger.exception("Blueprint registration failed: %s", bp_err)
-        raise  # Fatal — app can't serve routes without blueprints
+        _bp_error = str(bp_err)
+        # Non-fatal on Vercel: register a fallback route so the function
+        # responds with a diagnostic JSON rather than a bare 500 crash page.
+        @app.route('/', defaults={'path': ''})
+        @app.route('/<path:path>')
+        def blueprint_error_fallback(path):
+            from flask import jsonify
+            return jsonify({
+                'error': 'Application startup error',
+                'detail': _bp_error,
+                'status': 'blueprint_registration_failed',
+            }), 503
 
     # ── Inject Global Template Variables ────────────────────────────────────
     @app.context_processor
@@ -182,6 +194,31 @@ def create_app():
             'timestamp': datetime.now().isoformat(),
         }), 200
 
+    # ── Global Error Handlers ───────────────────────────────────────────────
+    # Return JSON for all HTTP errors so Vercel never shows a raw exception page.
+
+    @app.errorhandler(404)
+    def not_found(e):
+        from flask import jsonify, request as req
+        return jsonify({'error': 'Not found', 'path': req.path}), 404
+
+    @app.errorhandler(413)
+    def payload_too_large(e):
+        from flask import jsonify
+        return jsonify({'error': 'File too large. Maximum allowed size is 20 MB.'}), 413
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        from flask import jsonify
+        logger.error("Unhandled 500 error: %s", e)
+        return jsonify({'error': 'Internal server error', 'detail': str(e)}), 500
+
+    @app.errorhandler(Exception)
+    def unhandled_exception(e):
+        from flask import jsonify
+        logger.exception("Unhandled exception: %s", e)
+        return jsonify({'error': 'Unexpected server error', 'detail': str(e)}), 500
+
     logger.info("TruthCheck application initialized successfully")
     return app
 
@@ -209,7 +246,7 @@ def predict_with_groq(text):
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=os.getenv("GROQ_MODEL", "groq/compound-mini"),
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Analyze this news: {text[:4000]}"}

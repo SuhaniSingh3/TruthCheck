@@ -64,8 +64,11 @@ class Config:
 
     # --- Groq AI API ---
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-    GROQ_MODEL = os.getenv('GROQ_MODEL', 'llama-3.3-70b-versatile')
-    GROQ_VISION_MODEL = os.getenv('GROQ_VISION_MODEL', 'llama-3.3-70b-versatile')
+    # Override these via env vars in Vercel dashboard or .env file.
+    # Defaults use models confirmed available on the current API key.
+    # groq/compound-mini: verified JSON-mode support, fast, accurate.
+    GROQ_MODEL = os.getenv('GROQ_MODEL', 'groq/compound-mini')
+    GROQ_VISION_MODEL = os.getenv('GROQ_VISION_MODEL', 'openai/gpt-oss-20b')
     GROQ_TEMPERATURE = float(os.getenv('GROQ_TEMPERATURE', '0.1'))
     GROQ_MAX_TOKENS = int(os.getenv('GROQ_MAX_TOKENS', '4096'))
 

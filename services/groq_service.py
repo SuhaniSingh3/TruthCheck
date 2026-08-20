@@ -1,21 +1,64 @@
 """
 TruthCheck Groq API Service
-Core AI inference wrapper using Llama 3.3 70B Versatile and Vision models.
+Core AI inference wrapper using the configured model via Groq API.
 Preserves original predict_news logic and adds multi-modal & multilingual analysis.
 """
 import os
 import json
-from groq import Groq
 from config import Config
 from services.language_service import detect_language, build_multilingual_prompt
 
-client = None
-if Config.GROQ_API_KEY:
-    client = Groq(api_key=Config.GROQ_API_KEY)
+# ─── Lazy Client Factory ────────────────────────────────────────────────────────
+# The Groq client is created on first use (not at import time).
+# This avoids a race condition where GROQ_API_KEY is read from Config before
+# load_dotenv() has run, resulting in client=None for the entire process lifetime.
+
+_client_instance = None
+
+
+def _get_client():
+    """Return the cached Groq client, creating it lazily on first call."""
+    global _client_instance
+    if _client_instance is not None:
+        return _client_instance
+    api_key = os.getenv('GROQ_API_KEY') or Config.GROQ_API_KEY
+    if not api_key:
+        return None
+    try:
+        from groq import Groq
+        _client_instance = Groq(api_key=api_key)
+    except Exception as e:
+        print(f"Groq client init failed: {e}")
+        return None
+    return _client_instance
+
+
+# Backward-compatible module-level alias used by image_service.py
+# (image_service does: from services.groq_service import client as groq_client)
+# image_service checks `if not groq_client` — make it always call _get_client() instead.
+# We expose a thin proxy that resolves lazily.
+class _ClientProxy:
+    """Proxy that forwards attribute access to the lazily-created Groq client."""
+    def __bool__(self):
+        return _get_client() is not None
+
+    def __getattr__(self, name):
+        c = _get_client()
+        if c is None:
+            raise RuntimeError(
+                "Groq client not available — GROQ_API_KEY is not set or invalid."
+            )
+        return getattr(c, name)
+
+
+client = _ClientProxy()
+
 
 def predict_news(text, response_lang='en'):
     """Original news prediction logic preserved exactly, enhanced with multilingual response."""
-    if not client:
+    c = _get_client()
+    if not c:
+        print("predict_news: No Groq client available (GROQ_API_KEY not set?)")
         return None
 
     base_prompt = (
@@ -28,7 +71,7 @@ def predict_news(text, response_lang='en'):
     system_prompt = build_multilingual_prompt(base_prompt, source_lang, response_lang)
 
     try:
-        response = client.chat.completions.create(
+        response = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -37,17 +80,21 @@ def predict_news(text, response_lang='en'):
             response_format={"type": "json_object"},
             temperature=0.1
         )
-        data = json.loads(response.choices[0].message.content)
+        raw = response.choices[0].message.content
+        print(f"predict_news: raw response length={len(raw)}")
+        data = json.loads(raw)
         data['detected_language'] = source_lang
         data['risk_level'] = 'critical' if data.get('prediction') == 1 and data.get('confidence', 0) > 85 else 'medium'
         return data
     except Exception as e:
-        print(f"Groq API Error: {e}")
+        print(f"Groq API Error in predict_news: {type(e).__name__}: {e}")
         return None
+
 
 def analyze_youtube_content(transcript, title, description, response_lang='en'):
     """Analyze YouTube transcript and metadata for misinformation."""
-    if not client:
+    c = _get_client()
+    if not c:
         return None
     source_lang = detect_language(transcript or description or title or "")
     base_prompt = (
@@ -62,7 +109,7 @@ def analyze_youtube_content(transcript, title, description, response_lang='en'):
     system_prompt = build_multilingual_prompt(base_prompt, source_lang, response_lang)
     content = f"Title: {title}\nDescription: {description}\nTranscript excerpt: {(transcript or '')[:3500]}"
     try:
-        response = client.chat.completions.create(
+        response = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -76,9 +123,11 @@ def analyze_youtube_content(transcript, title, description, response_lang='en'):
         print(f"Groq YouTube Error: {e}")
         return None
 
+
 def analyze_url_content(title, content, domain, response_lang='en'):
     """Analyze scraped web article for authenticity and clickbait."""
-    if not client:
+    c = _get_client()
+    if not c:
         return None
     source_lang = detect_language(content or title or "")
     base_prompt = (
@@ -91,7 +140,7 @@ def analyze_url_content(title, content, domain, response_lang='en'):
     system_prompt = build_multilingual_prompt(base_prompt, source_lang, response_lang)
     user_msg = f"Domain: {domain}\nTitle: {title}\nArticle Content: {(content or '')[:3500]}"
     try:
-        response = client.chat.completions.create(
+        response = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -105,9 +154,11 @@ def analyze_url_content(title, content, domain, response_lang='en'):
         print(f"Groq URL Error: {e}")
         return None
 
+
 def analyze_image(image_base64, filename, metadata_str="", response_lang='en'):
     """Analyze image metadata and visual features for deepfake/AI generation indicators."""
-    if not client:
+    c = _get_client()
+    if not c:
         return None
     base_prompt = (
         "You are an AI Image Forensics expert. Evaluate this image and its metadata for signs of AI generation or tampering.\n"
@@ -118,7 +169,7 @@ def analyze_image(image_base64, filename, metadata_str="", response_lang='en'):
     )
     system_prompt = build_multilingual_prompt(base_prompt, 'en', response_lang)
     try:
-        response = client.chat.completions.create(
+        response = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -140,9 +191,11 @@ def analyze_image(image_base64, filename, metadata_str="", response_lang='en'):
             "suspicious_regions": ["Unnatural lighting gradient", "Inconsistent edge artifacts"]
         }
 
+
 def analyze_video_frames(frames_base64_list, response_lang='en'):
     """Analyze sampled video frames for deepfake indicators."""
-    if not client:
+    c = _get_client()
+    if not c:
         return None
     base_prompt = (
         "You are an expert deepfake video forensic analyst. Evaluate the video sequence for facial synthesis, lip sync mismatch, or frame warping.\n"
@@ -153,7 +206,7 @@ def analyze_video_frames(frames_base64_list, response_lang='en'):
     )
     system_prompt = build_multilingual_prompt(base_prompt, 'en', response_lang)
     try:
-        response = client.chat.completions.create(
+        response = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -175,9 +228,11 @@ def analyze_video_frames(frames_base64_list, response_lang='en'):
             "explanation": "Temporal inconsistency across frame transitions suggests AI face replacement."
         }
 
+
 def chat_response(messages, context=None, response_lang='en'):
     """Interactive AI Fact-Check Assistant."""
-    if not client:
+    c = _get_client()
+    if not c:
         return "Chat service currently unavailable. Please verify GROQ_API_KEY."
     sys_content = "You are TruthCheck AI, an empathetic and highly accurate investigative fact-checking assistant."
     if context:
@@ -187,7 +242,7 @@ def chat_response(messages, context=None, response_lang='en'):
     for m in messages[-8:]:
         formatted.append({"role": m.get("role", "user"), "content": m.get("content", "")})
     try:
-        resp = client.chat.completions.create(
+        resp = c.chat.completions.create(
             model=Config.GROQ_MODEL,
             messages=formatted,
             temperature=0.3

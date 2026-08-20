@@ -40,5 +40,8 @@ langdetect>=1.0.9
 # ─── YouTube Transcript ──────────────────────────────────────────────────────
 youtube-transcript-api>=0.6.2
 
-# NOTE: waitress removed — not needed on Vercel (uses @vercel/python WSGI adapter)
+# ─── Local Production Server (NOT used on Vercel) ────────────────────────────
+# Vercel uses its own built-in WSGI adapter — waitress is only for local prod.
+waitress>=3.0.0
+
 # NOTE: reportlab removed — PDF export uses window.print() client-side

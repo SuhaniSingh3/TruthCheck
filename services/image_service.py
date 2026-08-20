@@ -525,7 +525,7 @@ Metadata:
 Write 2–3 sentences for a non-technical user explaining the most important findings. Be specific but accessible. Do NOT fabricate details not supported by the data."""
 
         resp = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=os.getenv("GROQ_MODEL", "groq/compound-mini"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=250

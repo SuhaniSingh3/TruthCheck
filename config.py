@@ -33,7 +33,7 @@ class Config:
 
     # --- Flask Core ---
     SECRET_KEY = os.getenv('SECRET_KEY', 'truthcheck-dev-secret-change-in-production')
-    DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() in ('true', '1', 'yes')
+    DEBUG = os.getenv('FLASK_DEBUG', 'False').lower() in ('true', '1', 'yes')
 
     # --- Database ---
     # LOCAL:  SQLite (auto-created in instance/ directory)

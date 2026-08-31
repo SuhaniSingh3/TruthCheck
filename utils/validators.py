@@ -17,26 +17,30 @@ def validate_text_input(text, min_length=10, max_length=50000):
     return True, None
 
 def validate_url_format(url):
-    """Validate URL syntax."""
+    """Validate URL syntax. Returns (is_valid: bool, error_message: str|None)."""
     if not url or not isinstance(url, str):
-        return False
+        return False, "URL is required and must be a string."
     url_pattern = re.compile(
         r'^(https?://)'
         r'(([A-Za-z0-9-]+\.)+[A-Za-z]{2,63})'
         r'(:[0-9]{1,5})?'
         r'(/.*)?$', re.IGNORECASE
     )
-    return bool(url_pattern.match(url.strip()))
+    if bool(url_pattern.match(url.strip())):
+        return True, None
+    return False, "Invalid URL format. Must start with http:// or https://."
 
 def validate_youtube_url(url):
-    """Validate if URL points to YouTube."""
+    """Validate if URL points to YouTube. Returns (is_valid: bool, error_message: str|None)."""
     if not url or not isinstance(url, str):
-        return False
+        return False, "URL is required and must be a string."
     youtube_pattern = re.compile(
         r'^(https?://)?(www\.)?(youtube\.com/(watch\?v=|shorts/|embed/)|youtu\.be/)[A-Za-z0-9_-]{11}(.*)?$',
         re.IGNORECASE
     )
-    return bool(youtube_pattern.match(url.strip()))
+    if bool(youtube_pattern.match(url.strip())):
+        return True, None
+    return False, "Invalid YouTube URL. Please provide a valid youtube.com or youtu.be link."
 
 def validate_file_upload(file, allowed_extensions, max_size_bytes=104857600):
     """Validate uploaded file extension."""

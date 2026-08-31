@@ -20,6 +20,8 @@ psycopg2-binary>=2.9.9
 
 # ─── Content Extraction ──────────────────────────────────────────────────────
 beautifulsoup4>=4.12.0
+# lxml: fast HTML parser for BeautifulSoup (used by URL extraction fallback)
+lxml>=4.9.0
 
 # ─── Image Processing ────────────────────────────────────────────────────────
 # Pillow: core image loading, EXIF, ELA — pure-Python wheels available
@@ -28,6 +30,11 @@ Pillow>=10.0.0
 numpy>=1.26.0
 # piexif: granular EXIF read/write
 piexif>=1.1.3
+
+# ─── PDF Report Generation (optional) ────────────────────────────────────────
+# reportlab: used by services/report_service.py — imported lazily so app
+# starts even if not installed. PDF endpoint returns 503 if absent.
+reportlab>=4.0.0
 
 # ─── AI / ML (OPTIONAL — disabled on Vercel by IS_VERCEL flag) ───────────────
 # Uncomment locally only — too large for Vercel Lambda (>250 MB):
@@ -40,8 +47,15 @@ langdetect>=1.0.9
 # ─── YouTube Transcript ──────────────────────────────────────────────────────
 youtube-transcript-api>=0.6.2
 
+# ─── URL Article Extraction (OPTIONAL) ───────────────────────────────────────
+# newspaper3k: used by services/url_service.py for article extraction.
+# If absent, falls back to requests + BeautifulSoup automatically.
+# Excluded from Vercel by default due to large nltk/lxml dependencies.
+# Uncomment for local development if you want full newspaper features:
+# newspaper3k>=0.2.8
+
 # ─── Local Production Server (NOT used on Vercel) ────────────────────────────
 # Vercel uses its own built-in WSGI adapter — waitress is only for local prod.
-waitress>=3.0.0
+# waitress>=3.0.0
 
-# NOTE: reportlab removed — PDF export uses window.print() client-side
+# NOTE: reportlab removed from NOTE — now included above as optional dependency

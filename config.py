@@ -65,9 +65,17 @@ class Config:
     # --- Groq AI API ---
     GROQ_API_KEY = os.getenv('GROQ_API_KEY')
     # Override these via env vars in Vercel dashboard or .env file.
-    # Defaults use models confirmed available on the current API key.
-    # groq/compound-mini: verified JSON-mode support, fast, accurate.
-    GROQ_MODEL = os.getenv('GROQ_MODEL', 'groq/compound-mini')
+    # Defaults use active models available on Groq with fallback list
+    GROQ_MODEL = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+    GROQ_FALLBACK_MODELS = [
+        'openai/gpt-oss-120b',
+        'openai/gpt-oss-20b',
+        'qwen/qwen3.8-27b',
+        'llama-3.3-70b-versatile',
+        'llama-3.1-70b-versatile',
+        'llama3-70b-8192',
+        'llama-3.1-8b-instant',
+    ]
     GROQ_VISION_MODEL = os.getenv('GROQ_VISION_MODEL', 'openai/gpt-oss-20b')
     GROQ_TEMPERATURE = float(os.getenv('GROQ_TEMPERATURE', '0.1'))
     GROQ_MAX_TOKENS = int(os.getenv('GROQ_MAX_TOKENS', '4096'))

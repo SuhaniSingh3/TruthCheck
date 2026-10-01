@@ -21,13 +21,10 @@ def dashboard():
     """
     stats = {
         'total_analyses': 0,
-        'url_analyses': 0,
-        'video_analyses': 0,
         'image_analyses': 0,
         'fake_detected': 0,
         'real_detected': 0,
         'ai_images': 0,
-        'deepfakes': 0,
     }
     total = 0
     fake_count = 0
@@ -55,18 +52,14 @@ def dashboard():
         )
         stats = {
             'total_analyses': total,
-            'url_analyses': base_query.filter_by(input_type='url').count() if total else 0,
-            'video_analyses': base_query.filter_by(input_type='youtube').count() if total else 0,
             'image_analyses': base_query.filter_by(input_type='image').count() if total else 0,
             'fake_detected': fake_count,
             'real_detected': real_count,
             'ai_images': base_query.filter_by(input_type='image').filter(
                 Report.prediction.ilike('%AI%')).count() if total else 0,
-            'deepfakes': base_query.filter_by(input_type='video').filter(
-                Report.prediction.ilike('%DEEPFAKE%')).count() if total else 0,
         }
     except Exception:
-        # DB unavailable (Vercel without DATABASE_URL) — render with zero stats
+        # DB unavailable — render with zero stats
         pass
 
     return render_template(

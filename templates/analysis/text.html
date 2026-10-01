@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
-{% block title %}Smart Universal Detector — TruthCheck AI{% endblock %}
+{% block title %}Text & Headline Detector — TruthCheck AI{% endblock %}
 {% block content %}
 <div class="analysis-page glass">
-  <h2>Smart Multi-Input Misinformation Detector</h2>
-  <p>Paste any news article, headline, website URL, or YouTube video link below. Our engine will automatically detect the format and verify its authenticity in your preferred language.</p>
+  <h2>News Text & Headline Authenticity Detector</h2>
+  <p>Paste any news article, breaking headline, or statement below. Our AI fact-checking engine analyzes claims, language patterns, and evidence credibility.</p>
 
   <div class="form-container">
-    <textarea id="smart-input" rows="7" placeholder="Paste news article, URL (https://...), or YouTube link here..."></textarea>
+    <textarea id="smart-input" rows="7" placeholder="Paste news article, headline, or claim text here..."></textarea>
     <div class="form-actions">
       <button id="analyze-btn" class="btn-primary">Verify Authenticity →</button>
-      <span id="detection-badge" class="badge glass">Auto-Detecting Type...</span>
+      <span id="detection-badge" class="badge glass">Ready to Verify</span>
     </div>
   </div>
 

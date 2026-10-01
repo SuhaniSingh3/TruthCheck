@@ -473,19 +473,26 @@
                     body: JSON.stringify({ text: fullText })
                 });
 
-                const data = await response.json();
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonErr) {
+                    console.error("Failed to parse response JSON:", jsonErr);
+                    data = { error: `Server returned HTTP ${response.status}: ${response.statusText}` };
+                }
                 
-                if (data.error) {
+                if (!response.ok || data.error) {
+                    console.error(`Prediction API error (HTTP ${response.status}):`, data);
                     resultBox.style.display = "block";
-                    resultBox.textContent = "Error: " + data.error;
-                    resultBox.style.color = "red";
+                    resultBox.textContent = "Error: " + (data.error || "Failed to analyze article.");
+                    resultBox.style.color = "#ef4444";
                 } else {
                     sessionStorage.setItem("analysisResult", JSON.stringify(data));
                     window.location.href = "/result";
                 }
             } catch (error) {
-                alert("Error connecting to server!");
-                console.error(error);
+                console.error("Network error while connecting to server:", error);
+                alert("Error connecting to server! Please check that the server is running.");
             } finally {
                 analyzeBtn.textContent = "Analyze";
             }

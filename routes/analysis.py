@@ -1,17 +1,19 @@
 """
 TruthCheck — Analysis Routes
-Core text analysis and smart multi-type analysis endpoint.
-Preserves the original /predict API contract.
+============================
+Core news text and headline authenticity detection endpoints.
+Provides robust text analysis and preserves the /predict API.
 """
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import current_user
 from datetime import datetime
-import json
-import re
+import logging
 
 from extensions import db
 from models.report import Report
 from config import Config
+
+logger = logging.getLogger(__name__)
 
 analysis_bp = Blueprint('analysis', __name__)
 
@@ -21,81 +23,79 @@ def _get_user_id():
     return current_user.id if current_user.is_authenticated else None
 
 
-def _detect_input_type(text):
-    """Heuristically detect whether the input is a URL, YouTube link, or plain text.
-
-    Returns:
-        str: One of 'youtube', 'url', or 'text'.
-    """
-    text_stripped = text.strip()
-    youtube_patterns = [
-        r'(?:https?://)?(?:www\.)?youtube\.com/watch',
-        r'(?:https?://)?youtu\.be/',
-        r'(?:https?://)?(?:www\.)?youtube\.com/shorts/',
-    ]
-    for pattern in youtube_patterns:
-        if re.search(pattern, text_stripped, re.IGNORECASE):
-            return 'youtube'
-    if re.match(r'https?://', text_stripped, re.IGNORECASE):
-        return 'url'
-    return 'text'
+def _extract_request_text(data):
+    """Extract text/headline from various JSON or Form field names."""
+    if not isinstance(data, dict):
+        return ''
+    return (
+        data.get('text')
+        or data.get('headline')
+        or data.get('title')
+        or data.get('content')
+        or data.get('article')
+        or data.get('claim')
+        or data.get('query')
+        or ''
+    ).strip()
 
 
 # ──────────────────────────────────────────────
 # Original /predict endpoint (PRESERVED)
 # ──────────────────────────────────────────────
 @analysis_bp.route('/predict', methods=['POST'])
-# @limiter.limit("30 per minute")
 def predict():
     """Predict news authenticity — ORIGINAL API CONTRACT.
 
     Accepts JSON ``{"text": "..."}`` and returns the Groq prediction result.
-    This endpoint is backward-compatible with the original app.py implementation.
     """
     try:
-        data = request.get_json()
-        if not data or 'text' not in data:
-            return jsonify({'error': 'Missing "text" field'}), 400
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        text = _extract_request_text(data)
 
-        text = data['text'].strip()
-        if len(text) < 10:
-            return jsonify({'error': 'Text too short'}), 400
+        if not text:
+            return jsonify({'error': 'Missing "text" field in request'}), 400
+
+        if len(text) < 5:
+            return jsonify({'error': 'Text too short. Please provide at least 5 characters.'}), 400
 
         # --- Groq Prediction ---
         from services.groq_service import predict_news
         result = predict_news(text)
 
-        if result:
-            # Save analysis to database
-            try:
-                report = Report(
-                    user_id=_get_user_id(),
-                    input_type='text',
-                    input_text=text[:5000],
-                    prediction=result.get('label', ''),
-                    confidence=result.get('confidence'),
-                    risk_level=result.get('risk_level', ''),
-                    source='Groq (Llama-3.3)',
-                )
-                report.set_result(result)
-                db.session.add(report)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-
+        if not result:
+            logger.error("predict_news returned empty result for text: %s", text[:80])
             return jsonify({
-                'success': True,
-                'source': 'Groq (Llama-3.3)',
-                'text': text[:150] + '...' if len(text) > 150 else text,
-                **result,
-                'timestamp': datetime.now().isoformat(),
-            })
+                'error': 'Prediction service is currently unable to analyze this text. Please try again.',
+            }), 500
+
+        # Save analysis to database
+        try:
+            report = Report(
+                user_id=_get_user_id(),
+                input_type='text',
+                input_text=text[:5000],
+                prediction=result.get('label', ''),
+                confidence=result.get('confidence'),
+                risk_level=result.get('risk_level', ''),
+                source=result.get('source', 'Groq AI'),
+            )
+            report.set_result(result)
+            db.session.add(report)
+            db.session.commit()
+        except Exception as db_err:
+            logger.debug("Database report save skipped: %s", db_err)
+            db.session.rollback()
 
         return jsonify({
-            'error': 'Prediction service unavailable. Please check GROQ_API_KEY.',
-        }), 503
+            'success': True,
+            'source': result.get('source', 'Groq AI'),
+            'text': text[:150] + '...' if len(text) > 150 else text,
+            **result,
+            'timestamp': datetime.now().isoformat(),
+        }), 200
 
     except Exception as e:
+        logger.exception("Error in /predict endpoint: %s", e)
         return jsonify({'error': f'Server Error: {str(e)}'}), 500
 
 
@@ -104,92 +104,85 @@ def predict():
 # ──────────────────────────────────────────────
 @analysis_bp.route('/result', methods=['GET'])
 def result_page():
-    """Render the analysis result page (preserved from original)."""
+    """Render the analysis result page."""
     return render_template('result.html')
 
 
 # ──────────────────────────────────────────────
-# Smart Analysis Endpoint
+# Text Analysis Endpoints (/api/analyze and POST /analyze)
 # ──────────────────────────────────────────────
 @analysis_bp.route('/api/analyze', methods=['POST'])
-# @limiter.limit("20 per minute")
 def smart_analyze():
-    """Smart analysis endpoint that auto-detects input type and routes accordingly.
+    """Analyze news text, headline, or claim for factual authenticity.
 
-    Accepts JSON with:
-        - ``text``: The text, URL, or YouTube link to analyze.
+    Accepts JSON or Form:
+        - ``text`` or ``headline``: The news text or claim to analyze.
         - ``response_lang`` (optional): Preferred response language code.
 
     Returns:
         JSON object with analysis results.
     """
     try:
-        data = request.get_json()
-        if not data or 'text' not in data:
-            return jsonify({'error': 'Missing "text" field'}), 400
-
-        text = data['text'].strip()
-        response_lang = data.get('response_lang', Config.DEFAULT_LANGUAGE)
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+        text = _extract_request_text(data)
+        response_lang = data.get('response_lang', getattr(Config, 'DEFAULT_LANGUAGE', 'en'))
 
         if not text:
-            return jsonify({'error': 'Input text cannot be empty'}), 400
+            return jsonify({'error': 'Please provide news text, an article, or a headline to analyze.'}), 400
 
-        input_type = _detect_input_type(text)
-        result = None
+        if len(text) < 5:
+            return jsonify({'error': 'Text too short (minimum 5 characters required)'}), 400
 
-        if input_type == 'youtube':
-            from services.youtube_service import analyze_youtube
-            result = analyze_youtube(text, response_lang=response_lang)
-        elif input_type == 'url':
-            from services.url_service import analyze_url
-            result = analyze_url(text, response_lang=response_lang)
-        else:
-            if len(text) < 10:
-                return jsonify({'error': 'Text too short (min 10 characters)'}), 400
-            from services.groq_service import predict_news
-            result = predict_news(text, response_lang=response_lang)
+        from services.groq_service import predict_news
+        result = predict_news(text, response_lang=response_lang)
 
         if not result:
-            return jsonify({'error': 'Analysis service unavailable'}), 503
+            logger.error("Analysis service produced no result for input: %s", text[:80])
+            return jsonify({'error': 'Analysis service was unable to process this request. Please try again.'}), 500
 
         # Persist report
         try:
             report = Report(
                 user_id=_get_user_id(),
-                input_type=input_type,
+                input_type='text',
                 input_text=text[:5000],
-                input_title=result.get('title'),
+                input_title=result.get('title', text[:100]),
                 prediction=result.get('label', result.get('prediction', '')),
                 confidence=result.get('confidence'),
                 risk_level=result.get('risk_level', ''),
                 response_language=response_lang,
-                source=result.get('source', 'Groq (Llama-3.3)'),
+                source=result.get('source', 'Groq AI'),
             )
             report.set_result(result)
             db.session.add(report)
             db.session.commit()
 
             result['report_id'] = report.id
-        except Exception:
+        except Exception as db_err:
+            logger.debug("Database report save skipped: %s", db_err)
             db.session.rollback()
 
         return jsonify({
             'success': True,
-            'input_type': input_type,
+            'input_type': 'text',
             **result,
             'timestamp': datetime.now().isoformat(),
-        })
+        }), 200
 
     except Exception as e:
-        return jsonify({'error': f'Server Error: {str(e)}'}), 500
+        logger.exception("Unexpected error in /api/analyze: %s", e)
+        return jsonify({'error': f'Internal Server Error: {str(e)}'}), 500
 
 
 # ──────────────────────────────────────────────
-# Text Analysis Page
+# Text Analysis Route (GET: Page, POST: Smart Analyze)
 # ──────────────────────────────────────────────
-@analysis_bp.route('/analyze')
+@analysis_bp.route('/analyze', methods=['GET', 'POST'])
 def analyze_text_page():
-    """Render the text analysis form page."""
+    """Render the text analysis form page on GET, or run analysis on POST."""
+    if request.method == 'POST':
+        return smart_analyze()
+
     return render_template(
         'analysis/text.html',
         supported_languages=Config.SUPPORTED_LANGUAGES,

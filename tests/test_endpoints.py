@@ -1,55 +1,69 @@
+import unittest
 import json
-import pytest
+from unittest.mock import patch
 
 from app import create_app
+import extensions
 
 
-def test_health():
-    app = create_app()
-    client = app.test_client()
-    res = client.get('/health')
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data['status'] == 'healthy'
-    assert 'groq_active' in data
+class EndpointTestCase(unittest.TestCase):
+    def setUp(self):
+        self.app = create_app()
+        self.app.config['TESTING'] = True
+        self.client = self.app.test_client()
+
+    def test_health(self):
+        res = self.client.get('/health')
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data['status'], 'healthy')
+        self.assertIn('groq_active', data)
+
+    def test_predict_missing_text(self):
+        res = self.client.post('/predict', json={})
+        self.assertEqual(res.status_code, 400)
+
+    def test_predict_short_text(self):
+        res = self.client.post('/predict', json={'text': 'sh'})
+        self.assertEqual(res.status_code, 400)
+
+    def test_smart_analyze_endpoint(self):
+        res = self.client.post('/api/analyze', json={'text': 'Scientists reveal new telescope image capturing deep universe galaxies.'})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get('success'))
+        self.assertIn('label', data)
+        self.assertIn('confidence', data)
+
+    def test_analyze_route_alias(self):
+        res = self.client.post('/analyze', json={'headline': 'Government announces nationwide road safety initiative.'})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get('success'))
+
+    @patch('services.groq_service.predict_news')
+    def test_predict_mocked_success(self, mock_predict):
+        mock_predict.return_value = {
+            'label': 'FAKE NEWS',
+            'prediction': 1,
+            'confidence': 95.0,
+            'reasons': ['mocked reason'],
+            'summary': 'mocked summary'
+        }
+        res = self.client.post('/predict', json={'text': 'This is a sufficiently long test text for prediction.'})
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get('success'))
+        self.assertEqual(data.get('label'), 'FAKE NEWS')
 
 
-def test_predict_missing_text():
-    app = create_app()
-    client = app.test_client()
-    res = client.post('/predict', json={})
-    assert res.status_code == 400
+    def test_clear_history(self):
+        res = self.client.post('/api/clear-history')
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertTrue(data.get('success'))
+        self.assertIn('History cleared', data.get('message', ''))
 
 
-def test_predict_short_text():
-    app = create_app()
-    client = app.test_client()
-    res = client.post('/predict', json={'text': 'short'})
-    assert res.status_code == 400
-
-
-def test_predict_success(monkeypatch):
-    app = create_app()
-    client = app.test_client()
-
-    # Mock the external Groq call to return deterministic output
-    fake_result = {
-        'label': 'FAKE NEWS',
-        'prediction': 1,
-        'confidence': 0.9,
-        'reasons': ['mocked reason'],
-        'summary': 'mocked summary'
-    }
-
-    monkeypatch.setattr('app.predict_with_groq', lambda text: fake_result)
-
-    # Prevent DB commits from interfering with tests
-    import extensions
-    monkeypatch.setattr(extensions.db.session, 'add', lambda obj: None)
-    monkeypatch.setattr(extensions.db.session, 'commit', lambda: None)
-
-    res = client.post('/predict', json={'text': 'This is a sufficiently long test text for prediction.'})
-    assert res.status_code == 200
-    data = res.get_json()
-    assert data.get('success') is True
-    assert data.get('label') == 'FAKE NEWS'
+if __name__ == '__main__':
+    unittest.main()

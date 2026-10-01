@@ -188,6 +188,7 @@ def create_app():
             'status': 'healthy',
             'vercel': IS_VERCEL,
             'groq_configured': groq_configured,
+            'groq_active': groq_configured,
             'database_configured': db_configured,
             'database_connected': db_connected,
             'image_verification': True,
@@ -230,34 +231,11 @@ def create_app():
 
 def predict_with_groq(text):
     """
-    Predict news authenticity using Groq API (Llama-3.3).
-    PRESERVED from original app.py — do not modify this function.
-    Used internally; the actual /predict endpoint is in routes/analysis.py.
+    Predict news authenticity using Groq AI.
+    PRESERVED from original app.py — delegates to groq_service.
     """
-    if not client:
-        return None
-
-    system_prompt = (
-        "You are an expert news fact-checker. Analyze the provided news text and determine if it is REAL or FAKE.\n"
-        "Respond ONLY in JSON format with these exact keys:\n"
-        '{"label": "FAKE NEWS" or "REAL NEWS", "prediction": 1 or 0, "confidence": float, "reasons": [list of strings], "summary": "string"}\n'
-        "Use prediction 1 for FAKE and 0 for REAL."
-    )
-
-    try:
-        response = client.chat.completions.create(
-            model=os.getenv("GROQ_MODEL", "groq/compound-mini"),
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Analyze this news: {text[:4000]}"}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.1
-        )
-        return json.loads(response.choices[0].message.content)
-    except Exception as e:
-        logger.error("Groq API Error: %s", e)
-        return None
+    from services.groq_service import predict_news
+    return predict_news(text)
 
 
 # ─── Create the App ─────────────────────────────────────────────────────────────

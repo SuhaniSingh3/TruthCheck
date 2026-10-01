@@ -2,19 +2,27 @@
 {% block title %}Analysis History — TruthCheck AI{% endblock %}
 {% block content %}
 <div class="analysis-page glass">
-  <h2>Past Verification Reports</h2>
-  <p>Search, filter, favorite, and export your past verification reports.</p>
+  <div class="history-page-header">
+    <div>
+      <h2>Past Verification Reports</h2>
+      <p>Search, filter, favorite, and manage your past verification reports.</p>
+    </div>
+    <button id="clear-history-btn" class="btn-clear-history glass-btn-danger" title="Clear all verification history">
+      🗑️ Clear History
+    </button>
+  </div>
+
   <div class="history-controls">
-    <input type="text" id="history-search" placeholder="Search report titles or text...">
+    <input type="text" id="history-search" placeholder="Search report titles, queries, or verdicts...">
     <select id="history-filter-type">
-      <option value="">All Types</option>
-      <option value="text">Text / Headline</option>
-      <option value="url">URL</option>
-      <option value="youtube">YouTube</option>
-      <option value="image">Image</option>
-      <option value="video">Video</option>
+      <option value="">All Verification Types</option>
+      <option value="text">News Text / Headline</option>
+      <option value="image">AI Image Analysis</option>
     </select>
   </div>
-  <div id="history-list" class="recent-feed"></div>
+
+  <div id="history-list" class="recent-feed">
+    <div class="loading-state">Loading verification history...</div>
+  </div>
 </div>
 {% endblock %}

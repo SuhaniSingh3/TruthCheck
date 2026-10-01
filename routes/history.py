@@ -53,7 +53,7 @@ def get_history():
             )
 
         input_type = request.args.get('type', '').strip().lower()
-        if input_type and input_type in ('text', 'url', 'youtube', 'image', 'video'):
+        if input_type and input_type in ('text', 'image'):
             query = query.filter_by(input_type=input_type)
 
         favorites_only = request.args.get('favorites_only', '').lower() == 'true'
@@ -89,6 +89,29 @@ def get_history():
         return jsonify({'error': f'Server Error: {str(e)}'}), 500
 
 
+@history_bp.route('/api/clear-history', methods=['POST', 'DELETE'])
+@history_bp.route('/api/history/clear', methods=['POST', 'DELETE'])
+@history_bp.route('/clear_history', methods=['POST', 'DELETE'])
+def clear_history():
+    """Clear all analysis history for the active user or session."""
+    try:
+        if current_user.is_authenticated:
+            deleted_count = Report.query.filter_by(user_id=current_user.id).delete()
+        else:
+            deleted_count = Report.query.delete()
+
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'History cleared successfully',
+            'deleted_count': deleted_count,
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to clear history: {str(e)}'}), 500
+
+
 @history_bp.route('/api/history/<int:id>', methods=['DELETE'])
 def delete_report(id):
     """Delete a specific analysis report.
@@ -100,13 +123,17 @@ def delete_report(id):
         JSON confirmation or 404 if not found.
     """
     try:
-        report = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        if current_user.is_authenticated:
+            report = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        else:
+            report = Report.query.filter_by(id=id).first()
+
         if not report:
             return jsonify({'error': 'Report not found'}), 404
 
         db.session.delete(report)
         db.session.commit()
-        return jsonify({'success': True, 'message': 'Report deleted'})
+        return jsonify({'success': True, 'message': 'Report deleted'}), 200
 
     except Exception as e:
         db.session.rollback()
@@ -124,7 +151,11 @@ def toggle_favorite(id):
         JSON with the new ``is_favorite`` value.
     """
     try:
-        report = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        if current_user.is_authenticated:
+            report = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        else:
+            report = Report.query.filter_by(id=id).first()
+
         if not report:
             return jsonify({'error': 'Report not found'}), 404
 
@@ -144,9 +175,7 @@ def toggle_favorite(id):
 
 @history_bp.route('/api/history/<int:id>/reanalyze', methods=['POST'])
 def reanalyze_report(id):
-    """Re-run analysis on a previously stored input.
-
-    The original report is preserved; a new report is created with fresh results.
+    """Re-run analysis on a previously stored text report.
 
     Args:
         id: The report primary key.
@@ -155,58 +184,38 @@ def reanalyze_report(id):
         JSON with the new analysis result and new report ID.
     """
     try:
-        original = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        if current_user.is_authenticated:
+            original = Report.query.filter_by(id=id, user_id=current_user.id).first()
+        else:
+            original = Report.query.filter_by(id=id).first()
+
         if not original:
             return jsonify({'error': 'Report not found'}), 404
 
         input_type = original.input_type
-        result = None
+        if input_type != 'text' or not original.input_text:
+            return jsonify({'error': 'Re-analysis is supported for text and headline reports.'}), 400
 
-        if input_type == 'text':
-            if not original.input_text:
-                return jsonify({'error': 'No input text available for re-analysis'}), 400
-            from services.groq_service import predict_news
-            result = predict_news(
-                original.input_text,
-                response_lang=original.response_language,
-            )
-        elif input_type == 'youtube':
-            if not original.input_text:
-                return jsonify({'error': 'No URL available for re-analysis'}), 400
-            from services.youtube_service import analyze_youtube
-            result = analyze_youtube(
-                original.input_text,
-                response_lang=original.response_language,
-            )
-        elif input_type == 'url':
-            if not original.input_text:
-                return jsonify({'error': 'No URL available for re-analysis'}), 400
-            from services.url_service import analyze_url
-            result = analyze_url(
-                original.input_text,
-                response_lang=original.response_language,
-            )
-        elif input_type in ('image', 'video'):
-            return jsonify({
-                'error': 'Re-analysis of uploaded files is not supported (file not retained).',
-            }), 400
-        else:
-            return jsonify({'error': f'Unsupported input type: {input_type}'}), 400
+        from services.groq_service import predict_news
+        result = predict_news(
+            original.input_text,
+            response_lang=original.response_language,
+        )
 
         if not result:
             return jsonify({'error': 'Analysis service unavailable'}), 503
 
         # Save new report
         new_report = Report(
-            user_id=current_user.id,
-            input_type=input_type,
+            user_id=current_user.id if current_user.is_authenticated else None,
+            input_type='text',
             input_text=original.input_text,
             input_title=result.get('title', original.input_title),
             prediction=result.get('label', result.get('prediction', '')),
             confidence=result.get('confidence'),
             risk_level=result.get('risk_level', ''),
             response_language=original.response_language,
-            source=result.get('source', 'Groq (Llama-3.3)'),
+            source=result.get('source', 'Groq AI'),
         )
         new_report.set_result(result)
         db.session.add(new_report)

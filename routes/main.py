@@ -12,6 +12,8 @@ main_bp = Blueprint('main', __name__)
 
 
 @main_bp.route('/')
+@main_bp.route('/api/index')
+@main_bp.route('/api/index/')
 def dashboard():
     """Render the main dashboard with analysis statistics.
 

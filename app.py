@@ -46,6 +46,23 @@ except Exception as _groq_err:
     logger.warning("Groq client init failed (non-critical): %s", _groq_err)
 
 
+class VercelPathMiddleware:
+    """
+    WSGI middleware that normalizes PATH_INFO when deployed on Vercel.
+    Strips '/api/index' prefix if Vercel forwards the serverless file path.
+    """
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        path_info = environ.get('PATH_INFO', '')
+        if path_info == '/api/index' or path_info == '/api/index/':
+            environ['PATH_INFO'] = '/'
+        elif path_info.startswith('/api/index/'):
+            environ['PATH_INFO'] = path_info[len('/api/index'):]
+        return self.wsgi_app(environ, start_response)
+
+
 # ─── Application Factory ───────────────────────────────────────────────────────
 
 def create_app():
@@ -57,7 +74,15 @@ def create_app():
     logger.info("Vercel environment: %s", IS_VERCEL)
 
     from flask import Flask, request, jsonify, render_template
-    app = Flask(__name__)
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    app = Flask(
+        __name__,
+        template_folder=os.path.join(base_dir, 'templates'),
+        static_folder=os.path.join(base_dir, 'static'),
+        static_url_path='/static'
+    )
+    app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
     # ── Load Configuration ──────────────────────────────────────────────────
     logger.info("Loading configuration")

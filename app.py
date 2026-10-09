@@ -78,8 +78,8 @@ def create_app():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     app = Flask(
         __name__,
-        template_folder=os.path.join(base_dir, 'templates'),
-        static_folder=os.path.join(base_dir, 'static'),
+        template_folder=os.path.abspath(os.path.join(base_dir, 'templates')),
+        static_folder=os.path.abspath(os.path.join(base_dir, 'static')),
         static_url_path='/static'
     )
     app.wsgi_app = VercelPathMiddleware(app.wsgi_app)

@@ -38,7 +38,7 @@ class Config:
     # --- Database ---
     # LOCAL:  SQLite (auto-created in instance/ directory)
     # VERCEL with DATABASE_URL: PostgreSQL (set DATABASE_URL env var in Vercel dashboard)
-    # VERCEL without DATABASE_URL: in-memory SQLite (DB features disabled, app still boots)
+    # VERCEL without DATABASE_URL: SQLite in writable /tmp directory (/tmp/truthcheck.db)
     _raw_db_url = os.getenv('DATABASE_URL', '')
     if _raw_db_url.startswith('postgres://'):
         # SQLAlchemy 1.4+ requires 'postgresql://' not 'postgres://'
@@ -47,13 +47,13 @@ class Config:
     if _raw_db_url:
         # Explicit DATABASE_URL (PostgreSQL on Vercel, or custom local)
         SQLALCHEMY_DATABASE_URI = _raw_db_url
-    elif IS_VERCEL:
-        # Vercel without DATABASE_URL — use in-memory SQLite so app boots.
-        # db.create_all() is suppressed in app.py for this case.
-        SQLALCHEMY_DATABASE_URI = 'sqlite://'   # ":memory:" — never writes to disk
+    elif os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV') or IS_VERCEL:
+        # Vercel serverless writable path
+        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/truthcheck.db'
     else:
         # Local development — persistent SQLite in instance/
-        SQLALCHEMY_DATABASE_URI = f'sqlite:///{os.path.join(BASE_DIR, "instance", "truthcheck.db")}'
+        db_path = os.path.join(BASE_DIR, "instance", "truthcheck.db")
+        SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {

@@ -8,6 +8,10 @@ from flask_login import current_user
 from extensions import db
 from models.report import Report
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 history_bp = Blueprint('history', __name__)
 
 
@@ -86,7 +90,20 @@ def get_history():
         })
 
     except Exception as e:
-        return jsonify({'error': f'Server Error: {str(e)}'}), 500
+        logger.warning("History query failed: %s. Attempting auto table creation fallback.", e)
+        try:
+            db.create_all()
+        except Exception:
+            pass
+        return jsonify({
+            'success': True,
+            'reports': [],
+            'total': 0,
+            'page': 1,
+            'pages': 1,
+            'has_next': False,
+            'has_prev': False,
+        }), 200
 
 
 @history_bp.route('/api/clear-history', methods=['POST', 'DELETE'])

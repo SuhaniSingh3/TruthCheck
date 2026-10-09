@@ -131,39 +131,16 @@ def create_app():
         raise  # This is critical — can't continue without db/login_manager
 
     # ── Database Table Creation ─────────────────────────────────────────────
-    # On Vercel: only run if DATABASE_URL is configured (PostgreSQL).
-    # Never attempt SQLite writes to read-only /var/task filesystem.
-    # Locally: always attempt table creation.
+    # Ensures database tables exist on startup for both local and serverless environments.
     logger.info("Initializing database tables")
-    db_url = app.config.get('SQLALCHEMY_DATABASE_URI', '')
-    should_create_tables = False
-
-    if IS_VERCEL:
-        # Only create tables on Vercel if we have a real external DATABASE_URL
-        has_external_db = bool(os.getenv('DATABASE_URL'))
-        if has_external_db:
-            should_create_tables = True
-            logger.info("Vercel + DATABASE_URL detected — will attempt table creation")
-        else:
-            logger.warning(
-                "Vercel mode with no DATABASE_URL — skipping db.create_all(). "
-                "Database-dependent features will be unavailable."
-            )
-    else:
-        should_create_tables = True
-        logger.info("Local mode — will create tables (SQLite)")
-
-    if should_create_tables:
-        with app.app_context():
-            try:
-                from models.user import User
-                from models.report import Report
-                db.create_all()
-                logger.info("Database tables verified/created successfully")
-            except Exception as db_init_err:
-                logger.warning(
-                    "Database table creation failed (non-critical): %s", db_init_err
-                )
+    with app.app_context():
+        try:
+            from models.user import User  # noqa: F401
+            from models.report import Report  # noqa: F401
+            db.create_all()
+            logger.info("Database tables verified/created successfully")
+        except Exception as db_init_err:
+            logger.warning("Database table creation failed (non-critical): %s", db_init_err)
 
     # ── Register Blueprints ─────────────────────────────────────────────────
     # Blueprints own: /predict, /result, /landing, /image-detect, etc.

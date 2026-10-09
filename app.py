@@ -76,12 +76,24 @@ def create_app():
     from flask import Flask, request, jsonify, render_template
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    static_dir = os.path.abspath(os.path.join(base_dir, 'static'))
+    template_dir = os.path.abspath(os.path.join(base_dir, 'templates'))
+
     app = Flask(
         __name__,
-        template_folder=os.path.abspath(os.path.join(base_dir, 'templates')),
-        static_folder=os.path.abspath(os.path.join(base_dir, 'static')),
+        template_folder=template_dir,
+        static_folder=static_dir,
         static_url_path='/static'
     )
+
+    # Wrap WSGI app with WhiteNoise for direct static file delivery on Vercel
+    try:
+        from whitenoise import WhiteNoise
+        app.wsgi_app = WhiteNoise(app.wsgi_app, root=static_dir, prefix='static/')
+        logger.info("WhiteNoise static asset serving enabled for %s", static_dir)
+    except Exception as wn_err:
+        logger.warning("WhiteNoise initialization failed (falling back to Flask): %s", wn_err)
+
     app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
 
     # ── Load Configuration ──────────────────────────────────────────────────
@@ -219,6 +231,12 @@ def create_app():
             'image_verification': True,
             'timestamp': datetime.now().isoformat(),
         }), 200
+
+    @app.route('/static/<path:filename>', endpoint='custom_static')
+    def custom_static(filename):
+        """Explicit fallback static file server."""
+        from flask import send_from_directory
+        return send_from_directory(app.static_folder, filename)
 
     # ── Global Error Handlers ───────────────────────────────────────────────
     # Return JSON for all HTTP errors so Vercel never shows a raw exception page.
